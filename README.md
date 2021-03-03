@@ -9,6 +9,7 @@ corresponding to point cloud in A and C.</font>
 
 Source code will be released soon.
 ## Related paper
-Related paper will be available on arxiv soon.
+Related paper available on arxiv:  
+[Pixel-level Extrinsic Self Calibration of High Resolution LiDAR and Camera in Targetless Environments](http://arxiv.org/abs/2103.01627)
 ## Related video
 Related video: https://youtu.be/sp6PZTL2StY
