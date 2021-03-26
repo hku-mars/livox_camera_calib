@@ -13,3 +13,49 @@ Related paper available on arxiv:
 [Pixel-level Extrinsic Self Calibration of High Resolution LiDAR and Camera in Targetless Environments](http://arxiv.org/abs/2103.01627)
 ## Related video
 Related video: https://youtu.be/sp6PZTL2StY
+
+## 1. Prerequisites
+### 1.1 **Ubuntu** and **ROS**
+Ubuntu 64-bit 16.04 or 18.04.
+ROS Kinetic or Melodic. [ROS Installation](http://wiki.ros.org/ROS/Installation) and its additional ROS pacakge:
+
+```
+    sudo apt-get install ros-XXX-cv-bridge ros-xxx-pcl-conversions
+```
+
+### 1.2 **Eigen**
+Follow [Eigen Installation](http://eigen.tuxfamily.org/index.php?title=Main_Page)
+
+### 1.3. **Ceres Solver**
+Follow [Ceres Installation](http://ceres-solver.org/installation.html).
+
+### 1.4 **PCL**
+Follow [PCL Installation](http://www.pointclouds.org/downloads/linux.html). (Our code is tested with PCL1.7)
+
+## 2. Build
+Clone the repository and catkin_make:
+
+```
+cd ~/catkin_ws/src
+git clone https://github.com/hku-mars/livox_camera_calib.git
+cd ../
+catkin_make
+source ~/catkin_ws/devel/setup.bash
+```
+
+## 3. Run our example
+Download [Our recorded rosbag](https://drive.google.com/drive/folders/1pBvE_nrg60IUo7PXDRsbBwDI68sq5LS6?usp=sharing) to your local path, and then change the path in **calib.launch** to your data path. 
+```
+args = "$(find livox_camera_calib)/config/camera.yaml 
+        $(find livox_camera_calib)/config/config_outdoor.yaml 
+        YOUR_PATH/xxx.bag 
+        $(find livox_camera_calib)/result"
+```
+
+## 4. Run on your own sensor set
+Record the point cloud and image msg to rosbag. Then change the topic name in **config_outdoor.yaml** file
+```
+# Topic name in rosbag
+PointCloudTopic: "/livox/lidar"
+ImageTopic: "/camera/color/image_raw"
+```
