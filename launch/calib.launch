@@ -1,0 +1,18 @@
+<launch>
+  <node 
+    pkg="livox_camera_calib"
+    type="lidar_camera_calib"
+    name="lidar_camera_calib"
+    args="$(find livox_camera_calib)/config/camera.yaml 
+          $(find livox_camera_calib)/config/config_outdoor.yaml 
+          /media/ycj/C6CAB0E5CAB0D343/data/02_09/5.bag 
+          $(find livox_camera_calib)/result"
+    output="screen"
+  />
+  <node 
+    pkg="rviz"
+    type="rviz"
+    name="rviz"
+    args="-d $(find livox_camera_calib)/rviz_cfg/calib.rviz"
+  />
+</launch>
