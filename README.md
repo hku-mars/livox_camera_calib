@@ -26,7 +26,7 @@ ROS Kinetic or Melodic. [ROS Installation](http://wiki.ros.org/ROS/Installation)
 ### 1.2 **Eigen**
 Follow [Eigen Installation](http://eigen.tuxfamily.org/index.php?title=Main_Page)
 
-### 1.3. **Ceres Solver**
+### 1.3 **Ceres Solver**
 Follow [Ceres Installation](http://ceres-solver.org/installation.html).
 
 ### 1.4 **PCL**
@@ -53,9 +53,13 @@ args = "$(find livox_camera_calib)/config/camera.yaml
 ```
 
 ## 4. Run on your own sensor set
-Record the point cloud and image msg to rosbag. Then change the topic name in **config_outdoor.yaml** file
+### 4.1 Record data
+Record the point cloud and image msg to rosbag (15s or more for avia LiDAR). Then change the topic name in **config_outdoor.yaml** file
 ```
 # Topic name in rosbag
 PointCloudTopic: "/livox/lidar"
 ImageTopic: "/camera/color/image_raw"
 ```
+### 4.2 Modify some params
+Modify the camera matrix and distortion coeffs in **camera.yaml**  
+Modify the initial extrinsic in **config_outdoor.yaml** if needed.
