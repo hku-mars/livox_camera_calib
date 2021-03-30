@@ -7,7 +7,6 @@ views of the point cloud. B and D are parts of the camera image
 corresponding to point cloud in A and C.</font>
 </div>
 
-Source code will be released soon.
 ## Related paper
 Related paper available on arxiv:  
 [Pixel-level Extrinsic Self Calibration of High Resolution LiDAR and Camera in Targetless Environments](http://arxiv.org/abs/2103.01627)
@@ -44,12 +43,9 @@ source ~/catkin_ws/devel/setup.bash
 ```
 
 ## 3. Run our example
-Download [Our recorded rosbag](https://drive.google.com/drive/folders/1pBvE_nrg60IUo7PXDRsbBwDI68sq5LS6?usp=sharing) to your local path, and then change the path in **calib.launch** to your data path. 
+Download [Our recorded rosbag](https://drive.google.com/drive/folders/1pBvE_nrg60IUo7PXDRsbBwDI68sq5LS6?usp=sharing) to your local path, and then change the path in **calib.launch** to your data path. Then directly run
 ```
-args = "$(find livox_camera_calib)/config/camera.yaml 
-        $(find livox_camera_calib)/config/config_outdoor.yaml 
-        YOUR_PATH/xxx.bag 
-        $(find livox_camera_calib)/result"
+roslaunch livox_camera_calib calib.launch
 ```
 
 ## 4. Run on your own sensor set
