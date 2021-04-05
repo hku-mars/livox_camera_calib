@@ -1,6 +1,8 @@
 #ifndef LIDAR_CAMERA_CALIB_HPP
 #define LIDAR_CAMERA_CALIB_HPP
 
+#include "CustomMsg.h"
+#include "common.h"
 #include "common.h"
 #include <Eigen/Core>
 #include <cv_bridge/cv_bridge.h>
@@ -130,6 +132,7 @@ public:
   cv::Mat dist_coeffs_;
   cv::Mat init_extrinsic_;
 
+  bool is_use_custom_msg_;
   float voxel_size_;
   float down_sample_size_;
   float ransac_dis_threshold_;
@@ -240,6 +243,7 @@ bool Calibration::loadCalibConfig(const std::string &config_file) {
   init_translation_vector_ << init_extrinsic_.at<double>(0, 3),
       init_extrinsic_.at<double>(1, 3), init_extrinsic_.at<double>(2, 3);
   std::cout << "Init extrinsic: " << std::endl << init_extrinsic_ << std::endl;
+  fSettings["Data.custom_msg"] >> is_use_custom_msg_;
   rgb_canny_threshold_ = fSettings["Canny.gray_threshold"];
   rgb_edge_minLen_ = fSettings["Canny.len_threshold"];
   voxel_size_ = fSettings["Voxel.size"];
@@ -1306,15 +1310,31 @@ void Calibration::loadImgAndPointcloud(
 
   int cloudCount = 0;
   for (const rosbag::MessageInstance &m : view) {
-    sensor_msgs::PointCloud2 livox_cloud;
-    livox_cloud = *(m.instantiate<sensor_msgs::PointCloud2>()); // message type
-    pcl::PointCloud<pcl::PointXYZI> cloud;
-    pcl::PCLPointCloud2 pcl_pc;
-    pcl_conversions::toPCL(livox_cloud, pcl_pc);
-    pcl::fromPCLPointCloud2(pcl_pc, cloud);
-    for (uint i = 0; i < cloud.size(); ++i) {
-      origin_cloud->points.push_back(cloud.points[i]);
+    if (is_use_custom_msg_) {
+      livox_ros_driver::CustomMsg livox_cloud_msg =
+          *(m.instantiate<livox_ros_driver::CustomMsg>()); // message type
+
+      for (uint i = 0; i < livox_cloud_msg.point_num; ++i) {
+        pcl::PointXYZI p;
+        p.x = livox_cloud_msg.points[i].x;
+        p.y = livox_cloud_msg.points[i].y;
+        p.z = livox_cloud_msg.points[i].z;
+        p.intensity = livox_cloud_msg.points[i].reflectivity;
+        origin_cloud->points.push_back(p);
+      }
+    } else {
+      sensor_msgs::PointCloud2 livox_cloud;
+      livox_cloud =
+          *(m.instantiate<sensor_msgs::PointCloud2>()); // message type
+      pcl::PointCloud<pcl::PointXYZI> cloud;
+      pcl::PCLPointCloud2 pcl_pc;
+      pcl_conversions::toPCL(livox_cloud, pcl_pc);
+      pcl::fromPCLPointCloud2(pcl_pc, cloud);
+      for (uint i = 0; i < cloud.size(); ++i) {
+        origin_cloud->points.push_back(cloud.points[i]);
+      }
     }
+
     ++cloudCount;
     // maxinum msg num 1000
     // if (cloudCount > 1000) {

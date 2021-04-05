@@ -4,6 +4,8 @@
 PointCloudTopic: "/livox/lidar"
 ImageTopic: "/camera/color/image_raw"
 
+# Lidar Data type(custom msg or pointcloud2)
+Data.custom_msg: false
 # Initial extrinsic (usually provided by hand measurement or cad design)
 
 ExtrinsicMat: !!opencv-matrix

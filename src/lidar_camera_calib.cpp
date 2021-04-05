@@ -6,7 +6,7 @@
 #include <iostream>
 #include <opencv2/core/eigen.hpp>
 
-#define add_error
+//#define add_error
 
 // instrins matrix
 Eigen::Matrix3d inner;
