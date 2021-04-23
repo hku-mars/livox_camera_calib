@@ -61,7 +61,7 @@ public:
   int rgb_canny_threshold_ = 20;
   int intensity_canny_threshold_ = 20;
   int min_depth_ = 2.5;
-  int max_depth_ = 30;
+  int max_depth_ = 50;
   float min_cost_ = 1000;
   float detect_line_threshold_ = 0.02;
   int line_number_ = 0;
@@ -69,6 +69,7 @@ public:
   cv::Mat connect_img_;
   ProjectionType projection_type_ = DEPTH;
   Eigen::Vector3d optimize_euler_angle_;
+  Eigen::Vector3d adjust_euler_angle_;
   Calibration(const std::string &camera_file, const std::string &calib_file,
               const std::string &bag_path);
   void loadImgAndPointcloud(const std::string bag_path,
@@ -132,7 +133,7 @@ public:
   cv::Mat dist_coeffs_;
   cv::Mat init_extrinsic_;
 
-  bool is_use_custom_msg_;
+  int is_use_custom_msg_;
   float voxel_size_;
   float down_sample_size_;
   float ransac_dis_threshold_;
@@ -243,7 +244,13 @@ bool Calibration::loadCalibConfig(const std::string &config_file) {
   init_translation_vector_ << init_extrinsic_.at<double>(0, 3),
       init_extrinsic_.at<double>(1, 3), init_extrinsic_.at<double>(2, 3);
   std::cout << "Init extrinsic: " << std::endl << init_extrinsic_ << std::endl;
-  fSettings["Data.custom_msg"] >> is_use_custom_msg_;
+  is_use_custom_msg_ = fSettings["Data.custom_msg"];
+  if (is_use_custom_msg_) {
+    std::cout << "Point cloud type: custom msg" << std::endl;
+  } else {
+    std::cout << "Point cloud type: PointCloud2" << std::endl;
+  }
+
   rgb_canny_threshold_ = fSettings["Canny.gray_threshold"];
   rgb_edge_minLen_ = fSettings["Canny.len_threshold"];
   voxel_size_ = fSettings["Voxel.size"];
