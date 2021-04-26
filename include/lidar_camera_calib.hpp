@@ -39,6 +39,8 @@ public:
   ros::NodeHandle nh_;
   ros::Publisher rgb_cloud_pub_ =
       nh_.advertise<sensor_msgs::PointCloud2>("rgb_cloud", 1);
+  ros::Publisher init_rgb_cloud_pub_ =
+      nh_.advertise<sensor_msgs::PointCloud2>("init_rgb_cloud", 1);
   ros::Publisher planner_cloud_pub_ =
       nh_.advertise<sensor_msgs::PointCloud2>("planner_cloud", 1);
   ros::Publisher line_cloud_pub_ =
@@ -264,6 +266,12 @@ bool Calibration::loadCalibConfig(const std::string &config_file) {
   theta_min_ = cos(DEG2RAD(theta_min_));
   theta_max_ = cos(DEG2RAD(theta_max_));
   color_intensity_threshold_ = fSettings["Color.intensity_threshold"];
+  adjust_euler_angle_[0] = fSettings["AdjustEuler1"];
+  adjust_euler_angle_[1] = fSettings["AdjustEuler2"];
+  adjust_euler_angle_[2] = fSettings["AdjustEuler3"];
+  adjust_euler_angle_[0] = DEG2RAD(adjust_euler_angle_[0]);
+  adjust_euler_angle_[1] = DEG2RAD(adjust_euler_angle_[1]);
+  adjust_euler_angle_[2] = DEG2RAD(adjust_euler_angle_[2]);
 };
 
 // Color the point cloud by rgb image using given extrinsic
@@ -1454,27 +1462,29 @@ void Calibration::calcResidual(const Vector6d &extrinsic_params,
                distor[2] * (r2 + yo * yo + yo * yo);
     float ud = fx * xd + cx;
     float vd = fy * yd + cy;
-    if (vpnp_point.direction(0) == 0 && vpnp_point.direction(1) == 0) {
-      residual[0] = ud - vpnp_point.u;
-      residual[1] = vd - vpnp_point.v;
-    } else {
-      residual[0] = ud - vpnp_point.u;
-      residual[1] = vd - vpnp_point.v;
-      Eigen::Matrix2d I = Eigen::Matrix2d::Identity();
-      Eigen::Vector2d n = vpnp_point.direction;
-      Eigen::Matrix2d V = n * n.transpose();
-      Eigen::Matrix2d R;
-      R << residual[0], 0, 0, residual[1];
-      V = I - V;
-      R = V * R * V.transpose();
-      residual[0] = R(0, 0);
-      residual[1] = R(1, 1);
-    }
-    Eigen::Vector2d v(-vpnp_point.direction(1), vpnp_point.direction(0));
-    if (v(0) < 0) {
-      v = -v;
-    }
-    float cost = residual.transpose() * v;
+    residual[0] = ud - vpnp_point.u;
+    residual[1] = vd - vpnp_point.v;
+    // if (vpnp_point.direction(0) == 0 && vpnp_point.direction(1) == 0) {
+    //   residual[0] = ud - vpnp_point.u;
+    //   residual[1] = vd - vpnp_point.v;
+    // } else {
+    //   residual[0] = ud - vpnp_point.u;
+    //   residual[1] = vd - vpnp_point.v;
+    //   Eigen::Matrix2d I = Eigen::Matrix2d::Identity();
+    //   Eigen::Vector2d n = vpnp_point.direction;
+    //   Eigen::Matrix2d V = n * n.transpose();
+    //   Eigen::Matrix2d R;
+    //   R << residual[0], 0, 0, residual[1];
+    //   V = I - V;
+    //   R = V * R * V.transpose();
+    //   residual[0] = R(0, 0);
+    //   residual[1] = R(1, 1);
+    // }
+    // Eigen::Vector2d v(-vpnp_point.direction(1), vpnp_point.direction(0));
+    // if (v(0) < 0) {
+    //   v = -v;
+    // }
+    float cost = sqrt(residual[0] * residual[0] + residual[1] * residual[1]);
     residual_list.push_back(cost);
   }
 }

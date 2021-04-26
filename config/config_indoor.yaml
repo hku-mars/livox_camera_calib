@@ -30,6 +30,9 @@ Plane.normal_theta_max: 150
 Ransac.dis_threshold: 0.015
 Edge.min_dis_threshold: 0.03
 Edge.max_dis_threshold: 0.05
+AdjustEuler1: -3
+AdjustEuler2: -0.5
+AdjustEuler3: 2
 
 # Params for color point clouds
 Color.dense: 0.1
