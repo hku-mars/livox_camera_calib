@@ -6,7 +6,8 @@
 views of the point cloud. B and D are parts of the camera image
 corresponding to point cloud in A and C.</font>
 </div>
-
+## Info
+The next version will support mechanical LiDAR such as Velodyne and Ouster.
 ## Related paper
 Related paper available on arxiv:  
 [Pixel-level Extrinsic Self Calibration of High Resolution LiDAR and Camera in Targetless Environments](http://arxiv.org/abs/2103.01627)
