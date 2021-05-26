@@ -27,10 +27,11 @@ Voxel.down_sample_size: 0.02
 Plane.min_points_size: 30
 Plane.normal_theta_min: 30
 Plane.normal_theta_max: 150
+Plane.max_size: 8
 Ransac.dis_threshold: 0.015
 Edge.min_dis_threshold: 0.03
 Edge.max_dis_threshold: 0.05
-AdjustEuler1: -3
+AdjustEuler1: -2
 AdjustEuler2: -0.5
 AdjustEuler3: 2
 

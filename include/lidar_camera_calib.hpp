@@ -65,6 +65,7 @@ public:
   int min_depth_ = 2.5;
   int max_depth_ = 50;
   float min_cost_ = 1000;
+  int plane_max_size_ = 8;
   float detect_line_threshold_ = 0.02;
   int line_number_ = 0;
   int color_intensity_threshold_ = 0;
@@ -92,7 +93,9 @@ public:
                   const pcl::PointCloud<pcl::PointXYZI>::Ptr &lidar_cloud,
                   const ProjectionType projection_type, const bool is_fill_img,
                   cv::Mat &projection_img);
-
+  void calcLine(const std::vector<Plane> &plane_list, const double voxel_size,
+                const Eigen::Vector3d origin,
+                std::vector<pcl::PointCloud<pcl::PointXYZI>> &line_cloud_list);
   cv::Mat fillImg(const cv::Mat &input_img, const Direction first_direct,
                   const Direction second_direct);
   void buildPnp(const Vector6d &extrinsic_params, const int dis_threshold,
@@ -115,7 +118,7 @@ public:
   void initVoxel(const pcl::PointCloud<pcl::PointXYZI>::Ptr &input_cloud,
                  const float voxel_size,
                  std::unordered_map<VOXEL_LOC, Voxel *> &voxel_map);
-  void LidarEdgeExtraction(
+  void LiDAREdgeExtraction(
       const std::unordered_map<VOXEL_LOC, Voxel *> &voxel_map,
       const float ransac_dis_thre, const int plane_size_threshold,
       pcl::PointCloud<pcl::PointXYZI>::Ptr &lidar_line_cloud_3d);
@@ -183,7 +186,7 @@ Calibration::Calibration(const std::string &camera_file,
   std::unordered_map<VOXEL_LOC, Voxel *> voxel_map;
 
   initVoxel(raw_lidar_cloud_, voxel_size_, voxel_map);
-  LidarEdgeExtraction(voxel_map, ransac_dis_threshold_, plane_size_threshold_,
+  LiDAREdgeExtraction(voxel_map, ransac_dis_threshold_, plane_size_threshold_,
                       plane_line_cloud_);
 
   if (!rgb_image_.data) {
@@ -258,6 +261,7 @@ bool Calibration::loadCalibConfig(const std::string &config_file) {
   voxel_size_ = fSettings["Voxel.size"];
   down_sample_size_ = fSettings["Voxel.down_sample_size"];
   plane_size_threshold_ = fSettings["Plane.min_points_size"];
+  plane_max_size_ = fSettings["Plane.max_size"];
   ransac_dis_threshold_ = fSettings["Ransac.dis_threshold"];
   min_line_dis_threshold_ = fSettings["Edge.min_dis_threshold"];
   max_line_dis_threshold_ = fSettings["Edge.max_dis_threshold"];
@@ -668,12 +672,13 @@ void Calibration::initVoxel(
     }
   }
 }
-void Calibration::LidarEdgeExtraction(
+
+void Calibration::LiDAREdgeExtraction(
     const std::unordered_map<VOXEL_LOC, Voxel *> &voxel_map,
     const float ransac_dis_thre, const int plane_size_threshold,
     pcl::PointCloud<pcl::PointXYZI>::Ptr &lidar_line_cloud_3d) {
   ROS_INFO_STREAM("Extracting Lidar Edge");
-  ros::Rate loop(500);
+  ros::Rate loop(5000);
   lidar_line_cloud_3d =
       pcl::PointCloud<pcl::PointXYZI>::Ptr(new pcl::PointCloud<pcl::PointXYZI>);
   for (auto iter = voxel_map.begin(); iter != voxel_map.end(); iter++) {
@@ -699,9 +704,8 @@ void Calibration::LidarEdgeExtraction(
       if (iter->second->voxel_origin[0] < 10) {
         seg.setDistanceThreshold(ransac_dis_thre);
       } else {
-        seg.setDistanceThreshold(ransac_dis_thre + 0.005);
+        seg.setDistanceThreshold(ransac_dis_thre);
       }
-
       pcl::PointCloud<pcl::PointXYZRGB> color_planner_cloud;
       int plane_index = 0;
       while (cloud_filter->points.size() > 10) {
@@ -759,231 +763,234 @@ void Calibration::LidarEdgeExtraction(
         extract.filter(cloud_f);
         *cloud_filter = cloud_f;
       }
-      // ros::Rate loop(50);
-      if (plane_list.size() >= 2 && plane_list.size() <= 5) {
-        pcl::PointCloud<pcl::PointXYZI> temp_line_cloud;
-        int temp_line_time = 0;
+      if (plane_list.size() >= 2) {
         sensor_msgs::PointCloud2 planner_cloud2;
         pcl::toROSMsg(color_planner_cloud, planner_cloud2);
         planner_cloud2.header.frame_id = "livox";
         planner_cloud_pub_.publish(planner_cloud2);
         loop.sleep();
-        // for (size_t pi = 0; pi < plane_list.size(); pi++) {
-        //   std::cout << "plane " << pi << " size:" <<
-        //   plane_list[pi].cloud.size()
-        //             << std::endl;
-        // }
-        for (size_t plane_index1 = 0; plane_index1 < plane_list.size() - 1;
-             plane_index1++) {
-          for (size_t plane_index2 = plane_index1 + 1;
-               plane_index2 < plane_list.size(); plane_index2++) {
-            float a1 = plane_list[plane_index1].normal[0];
-            float b1 = plane_list[plane_index1].normal[1];
-            float c1 = plane_list[plane_index1].normal[2];
-            float x1 = plane_list[plane_index1].p_center.x;
-            float y1 = plane_list[plane_index1].p_center.y;
-            float z1 = plane_list[plane_index1].p_center.z;
-            float a2 = plane_list[plane_index2].normal[0];
-            float b2 = plane_list[plane_index2].normal[1];
-            float c2 = plane_list[plane_index2].normal[2];
-            float x2 = plane_list[plane_index2].p_center.x;
-            float y2 = plane_list[plane_index2].p_center.y;
-            float z2 = plane_list[plane_index2].p_center.z;
-            float theta = a1 * a2 + b1 * b2 + c1 * c2;
-            if (theta > theta_max_ && theta < theta_min_) {
-              // for (int i = 0; i < 6; i++) {
-              if (plane_list[plane_index1].cloud.size() > 0 ||
-                  plane_list[plane_index2].cloud.size() > 0) {
-                float matrix[4][5];
-                matrix[1][1] = a1;
-                matrix[1][2] = b1;
-                matrix[1][3] = c1;
-                matrix[1][4] = a1 * x1 + b1 * y1 + c1 * z1;
-                matrix[2][1] = a2;
-                matrix[2][2] = b2;
-                matrix[2][3] = c2;
-                matrix[2][4] = a2 * x2 + b2 * y2 + c2 * z2;
+      }
 
-                Eigen::Vector3d origin = iter->second->voxel_origin;
-                // std::cout << "origin:" << origin[0] << " " << origin[1] << "
-                // "
-                //           << origin[2] << std::endl;
-                // six types
-                std::vector<Eigen::Vector3d> points;
-                Eigen::Vector3d point;
-                matrix[3][1] = 1;
-                matrix[3][2] = 0;
-                matrix[3][3] = 0;
-                matrix[3][4] = origin[0];
-                calc<float>(matrix, point);
-                if (point[0] >= origin[0] &&
-                    point[0] <= origin[0] + voxel_size_ &&
-                    point[1] >= origin[1] &&
-                    point[1] <= origin[1] + voxel_size_ &&
-                    point[2] >= origin[2] &&
-                    point[2] <= origin[2] + voxel_size_) {
-                  points.push_back(point);
-                }
-                matrix[3][1] = 0;
-                matrix[3][2] = 1;
-                matrix[3][3] = 0;
-                matrix[3][4] = origin[1];
-                calc<float>(matrix, point);
-                if (point[0] >= origin[0] &&
-                    point[0] <= origin[0] + voxel_size_ &&
-                    point[1] >= origin[1] &&
-                    point[1] <= origin[1] + voxel_size_ &&
-                    point[2] >= origin[2] &&
-                    point[2] <= origin[2] + voxel_size_) {
-                  points.push_back(point);
-                }
-                matrix[3][1] = 0;
-                matrix[3][2] = 0;
-                matrix[3][3] = 1;
-                matrix[3][4] = origin[2];
-                calc<float>(matrix, point);
-                if (point[0] >= origin[0] &&
-                    point[0] <= origin[0] + voxel_size_ &&
-                    point[1] >= origin[1] &&
-                    point[1] <= origin[1] + voxel_size_ &&
-                    point[2] >= origin[2] &&
-                    point[2] <= origin[2] + voxel_size_) {
-                  points.push_back(point);
-                }
-                matrix[3][1] = 1;
-                matrix[3][2] = 0;
-                matrix[3][3] = 0;
-                matrix[3][4] = origin[0] + voxel_size_;
-                calc<float>(matrix, point);
-                if (point[0] >= origin[0] &&
-                    point[0] <= origin[0] + voxel_size_ &&
-                    point[1] >= origin[1] &&
-                    point[1] <= origin[1] + voxel_size_ &&
-                    point[2] >= origin[2] &&
-                    point[2] <= origin[2] + voxel_size_) {
-                  points.push_back(point);
-                }
-                matrix[3][1] = 0;
-                matrix[3][2] = 1;
-                matrix[3][3] = 0;
-                matrix[3][4] = origin[1] + voxel_size_;
-                calc<float>(matrix, point);
-                if (point[0] >= origin[0] &&
-                    point[0] <= origin[0] + voxel_size_ &&
-                    point[1] >= origin[1] &&
-                    point[1] <= origin[1] + voxel_size_ &&
-                    point[2] >= origin[2] &&
-                    point[2] <= origin[2] + voxel_size_) {
-                  points.push_back(point);
-                }
-                matrix[3][1] = 0;
-                matrix[3][2] = 0;
-                matrix[3][3] = 1;
-                matrix[3][4] = origin[2] + voxel_size_;
-                calc<float>(matrix, point);
-                if (point[0] >= origin[0] &&
-                    point[0] <= origin[0] + voxel_size_ &&
-                    point[1] >= origin[1] &&
-                    point[1] <= origin[1] + voxel_size_ &&
-                    point[2] >= origin[2] &&
-                    point[2] <= origin[2] + voxel_size_) {
-                  points.push_back(point);
-                }
-                // std::cout << "points size:" << points.size() << std::endl;
-                if (points.size() == 2) {
-                  pcl::PointCloud<pcl::PointXYZI> line_cloud;
-                  pcl::PointXYZ p1(points[0][0], points[0][1], points[0][2]);
-                  pcl::PointXYZ p2(points[1][0], points[1][1], points[1][2]);
-                  float length =
-                      sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2) +
-                           pow(p1.z - p2.z, 2));
+      std::vector<pcl::PointCloud<pcl::PointXYZI>> line_cloud_list;
+      calcLine(plane_list, voxel_size_, iter->second->voxel_origin,
+               line_cloud_list);
+      // ouster 5,normal 3
+      if (line_cloud_list.size() > 0 && line_cloud_list.size() <= 8) {
 
-                  // 指定近邻个数
-                  int K = 1;
-                  // 创建两个向量，分别存放近邻的索引值、近邻的中心距
-                  std::vector<int> pointIdxNKNSearch1(K);
-                  std::vector<float> pointNKNSquaredDistance1(K);
-                  std::vector<int> pointIdxNKNSearch2(K);
-                  std::vector<float> pointNKNSquaredDistance2(K);
-                  pcl::search::KdTree<pcl::PointXYZI>::Ptr kdtree1(
-                      new pcl::search::KdTree<pcl::PointXYZI>());
-                  pcl::search::KdTree<pcl::PointXYZI>::Ptr kdtree2(
-                      new pcl::search::KdTree<pcl::PointXYZI>());
-                  kdtree1->setInputCloud(
-                      plane_list[plane_index1].cloud.makeShared());
-                  kdtree2->setInputCloud(
-                      plane_list[plane_index2].cloud.makeShared());
-                  for (float inc = 0; inc <= length; inc += 0.01) {
-                    pcl::PointXYZI p;
-                    p.x = p1.x + (p2.x - p1.x) * inc / length;
-                    p.y = p1.y + (p2.y - p1.y) * inc / length;
-                    p.z = p1.z + (p2.z - p1.z) * inc / length;
-                    p.intensity = 100;
-                    if ((kdtree1->nearestKSearch(p, K, pointIdxNKNSearch1,
-                                                 pointNKNSquaredDistance1) >
-                         0) &&
-                        (kdtree2->nearestKSearch(p, K, pointIdxNKNSearch2,
-                                                 pointNKNSquaredDistance2) >
-                         0)) {
-                      float dis1 =
-                          pow(p.x -
-                                  plane_list[plane_index1]
-                                      .cloud.points[pointIdxNKNSearch1[0]]
-                                      .x,
-                              2) +
-                          pow(p.y -
-                                  plane_list[plane_index1]
-                                      .cloud.points[pointIdxNKNSearch1[0]]
-                                      .y,
-                              2) +
-                          pow(p.z -
-                                  plane_list[plane_index1]
-                                      .cloud.points[pointIdxNKNSearch1[0]]
-                                      .z,
-                              2);
-                      float dis2 =
-                          pow(p.x -
-                                  plane_list[plane_index2]
-                                      .cloud.points[pointIdxNKNSearch2[0]]
-                                      .x,
-                              2) +
-                          pow(p.y -
-                                  plane_list[plane_index2]
-                                      .cloud.points[pointIdxNKNSearch2[0]]
-                                      .y,
-                              2) +
-                          pow(p.z -
-                                  plane_list[plane_index2]
-                                      .cloud.points[pointIdxNKNSearch2[0]]
-                                      .z,
-                              2);
-                      if ((dis1 < min_line_dis_threshold_ *
-                                      min_line_dis_threshold_ &&
-                           dis2 < max_line_dis_threshold_ *
-                                      max_line_dis_threshold_) ||
-                          ((dis1 < max_line_dis_threshold_ *
-                                       max_line_dis_threshold_ &&
-                            dis2 < min_line_dis_threshold_ *
-                                       min_line_dis_threshold_))) {
-                        line_cloud.push_back(p);
-                      }
-                    }
-                  }
-                  if (line_cloud.size() > 20) {
-                    temp_line_time++;
-                    for (size_t i = 0; i < line_cloud.size(); i++) {
-                      pcl::PointXYZI p = line_cloud.points[i];
-                      plane_line_cloud_->points.push_back(p);
-                      sensor_msgs::PointCloud2 pub_cloud;
-                      pcl::toROSMsg(line_cloud, pub_cloud);
-                      pub_cloud.header.frame_id = "livox";
-                      line_cloud_pub_.publish(pub_cloud);
-                      temp_line_cloud.points.push_back(p);
-                      plane_line_number_.push_back(line_number_);
-                    }
-                    line_number_++;
+        for (size_t cloud_index = 0; cloud_index < line_cloud_list.size();
+             cloud_index++) {
+          for (size_t i = 0; i < line_cloud_list[cloud_index].size(); i++) {
+            pcl::PointXYZI p = line_cloud_list[cloud_index].points[i];
+            plane_line_cloud_->points.push_back(p);
+            sensor_msgs::PointCloud2 pub_cloud;
+            pcl::toROSMsg(line_cloud_list[cloud_index], pub_cloud);
+            pub_cloud.header.frame_id = "livox";
+            line_cloud_pub_.publish(pub_cloud);
+            loop.sleep();
+            plane_line_number_.push_back(line_number_);
+          }
+          line_number_++;
+        }
+      }
+    }
+  }
+}
+
+void Calibration::calcLine(
+    const std::vector<Plane> &plane_list, const double voxel_size,
+    const Eigen::Vector3d origin,
+    std::vector<pcl::PointCloud<pcl::PointXYZI>> &line_cloud_list) {
+  if (plane_list.size() >= 2 && plane_list.size() <= plane_max_size_) {
+    pcl::PointCloud<pcl::PointXYZI> temp_line_cloud;
+    for (size_t plane_index1 = 0; plane_index1 < plane_list.size() - 1;
+         plane_index1++) {
+      for (size_t plane_index2 = plane_index1 + 1;
+           plane_index2 < plane_list.size(); plane_index2++) {
+        float a1 = plane_list[plane_index1].normal[0];
+        float b1 = plane_list[plane_index1].normal[1];
+        float c1 = plane_list[plane_index1].normal[2];
+        float x1 = plane_list[plane_index1].p_center.x;
+        float y1 = plane_list[plane_index1].p_center.y;
+        float z1 = plane_list[plane_index1].p_center.z;
+        float a2 = plane_list[plane_index2].normal[0];
+        float b2 = plane_list[plane_index2].normal[1];
+        float c2 = plane_list[plane_index2].normal[2];
+        float x2 = plane_list[plane_index2].p_center.x;
+        float y2 = plane_list[plane_index2].p_center.y;
+        float z2 = plane_list[plane_index2].p_center.z;
+        float theta = a1 * a2 + b1 * b2 + c1 * c2;
+        //
+        float point_dis_threshold = 0.00;
+        if (theta > theta_max_ && theta < theta_min_) {
+          // for (int i = 0; i < 6; i++) {
+          if (plane_list[plane_index1].cloud.size() > 0 ||
+              plane_list[plane_index2].cloud.size() > 0) {
+            float matrix[4][5];
+            matrix[1][1] = a1;
+            matrix[1][2] = b1;
+            matrix[1][3] = c1;
+            matrix[1][4] = a1 * x1 + b1 * y1 + c1 * z1;
+            matrix[2][1] = a2;
+            matrix[2][2] = b2;
+            matrix[2][3] = c2;
+            matrix[2][4] = a2 * x2 + b2 * y2 + c2 * z2;
+            // six types
+            std::vector<Eigen::Vector3d> points;
+            Eigen::Vector3d point;
+            matrix[3][1] = 1;
+            matrix[3][2] = 0;
+            matrix[3][3] = 0;
+            matrix[3][4] = origin[0];
+            calc<float>(matrix, point);
+            if (point[0] >= origin[0] - point_dis_threshold &&
+                point[0] <= origin[0] + voxel_size + point_dis_threshold &&
+                point[1] >= origin[1] - point_dis_threshold &&
+                point[1] <= origin[1] + voxel_size + point_dis_threshold &&
+                point[2] >= origin[2] - point_dis_threshold &&
+                point[2] <= origin[2] + voxel_size + point_dis_threshold) {
+              points.push_back(point);
+            }
+            matrix[3][1] = 0;
+            matrix[3][2] = 1;
+            matrix[3][3] = 0;
+            matrix[3][4] = origin[1];
+            calc<float>(matrix, point);
+            if (point[0] >= origin[0] - point_dis_threshold &&
+                point[0] <= origin[0] + voxel_size + point_dis_threshold &&
+                point[1] >= origin[1] - point_dis_threshold &&
+                point[1] <= origin[1] + voxel_size + point_dis_threshold &&
+                point[2] >= origin[2] - point_dis_threshold &&
+                point[2] <= origin[2] + voxel_size + point_dis_threshold) {
+              points.push_back(point);
+            }
+            matrix[3][1] = 0;
+            matrix[3][2] = 0;
+            matrix[3][3] = 1;
+            matrix[3][4] = origin[2];
+            calc<float>(matrix, point);
+            if (point[0] >= origin[0] - point_dis_threshold &&
+                point[0] <= origin[0] + voxel_size + point_dis_threshold &&
+                point[1] >= origin[1] - point_dis_threshold &&
+                point[1] <= origin[1] + voxel_size + point_dis_threshold &&
+                point[2] >= origin[2] - point_dis_threshold &&
+                point[2] <= origin[2] + voxel_size + point_dis_threshold) {
+              points.push_back(point);
+            }
+            matrix[3][1] = 1;
+            matrix[3][2] = 0;
+            matrix[3][3] = 0;
+            matrix[3][4] = origin[0] + voxel_size;
+            calc<float>(matrix, point);
+            if (point[0] >= origin[0] - point_dis_threshold &&
+                point[0] <= origin[0] + voxel_size + point_dis_threshold &&
+                point[1] >= origin[1] - point_dis_threshold &&
+                point[1] <= origin[1] + voxel_size + point_dis_threshold &&
+                point[2] >= origin[2] - point_dis_threshold &&
+                point[2] <= origin[2] + voxel_size + point_dis_threshold) {
+              points.push_back(point);
+            }
+            matrix[3][1] = 0;
+            matrix[3][2] = 1;
+            matrix[3][3] = 0;
+            matrix[3][4] = origin[1] + voxel_size;
+            calc<float>(matrix, point);
+            if (point[0] >= origin[0] - point_dis_threshold &&
+                point[0] <= origin[0] + voxel_size + point_dis_threshold &&
+                point[1] >= origin[1] - point_dis_threshold &&
+                point[1] <= origin[1] + voxel_size + point_dis_threshold &&
+                point[2] >= origin[2] - point_dis_threshold &&
+                point[2] <= origin[2] + voxel_size + point_dis_threshold) {
+              points.push_back(point);
+            }
+            matrix[3][1] = 0;
+            matrix[3][2] = 0;
+            matrix[3][3] = 1;
+            matrix[3][4] = origin[2] + voxel_size;
+            calc<float>(matrix, point);
+            if (point[0] >= origin[0] - point_dis_threshold &&
+                point[0] <= origin[0] + voxel_size + point_dis_threshold &&
+                point[1] >= origin[1] - point_dis_threshold &&
+                point[1] <= origin[1] + voxel_size + point_dis_threshold &&
+                point[2] >= origin[2] - point_dis_threshold &&
+                point[2] <= origin[2] + voxel_size + point_dis_threshold) {
+              points.push_back(point);
+            }
+            // std::cout << "points size:" << points.size() << std::endl;
+            if (points.size() == 2) {
+              pcl::PointCloud<pcl::PointXYZI> line_cloud;
+              pcl::PointXYZ p1(points[0][0], points[0][1], points[0][2]);
+              pcl::PointXYZ p2(points[1][0], points[1][1], points[1][2]);
+              float length = sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2) +
+                                  pow(p1.z - p2.z, 2));
+              // 指定近邻个数
+              int K = 1;
+              // 创建两个向量，分别存放近邻的索引值、近邻的中心距
+              std::vector<int> pointIdxNKNSearch1(K);
+              std::vector<float> pointNKNSquaredDistance1(K);
+              std::vector<int> pointIdxNKNSearch2(K);
+              std::vector<float> pointNKNSquaredDistance2(K);
+              pcl::search::KdTree<pcl::PointXYZI>::Ptr kdtree1(
+                  new pcl::search::KdTree<pcl::PointXYZI>());
+              pcl::search::KdTree<pcl::PointXYZI>::Ptr kdtree2(
+                  new pcl::search::KdTree<pcl::PointXYZI>());
+              kdtree1->setInputCloud(
+                  plane_list[plane_index1].cloud.makeShared());
+              kdtree2->setInputCloud(
+                  plane_list[plane_index2].cloud.makeShared());
+              for (float inc = 0; inc <= length; inc += 0.01) {
+                pcl::PointXYZI p;
+                p.x = p1.x + (p2.x - p1.x) * inc / length;
+                p.y = p1.y + (p2.y - p1.y) * inc / length;
+                p.z = p1.z + (p2.z - p1.z) * inc / length;
+                p.intensity = 100;
+                if ((kdtree1->nearestKSearch(p, K, pointIdxNKNSearch1,
+                                             pointNKNSquaredDistance1) > 0) &&
+                    (kdtree2->nearestKSearch(p, K, pointIdxNKNSearch2,
+                                             pointNKNSquaredDistance2) > 0)) {
+                  float dis1 = pow(p.x -
+                                       plane_list[plane_index1]
+                                           .cloud.points[pointIdxNKNSearch1[0]]
+                                           .x,
+                                   2) +
+                               pow(p.y -
+                                       plane_list[plane_index1]
+                                           .cloud.points[pointIdxNKNSearch1[0]]
+                                           .y,
+                                   2) +
+                               pow(p.z -
+                                       plane_list[plane_index1]
+                                           .cloud.points[pointIdxNKNSearch1[0]]
+                                           .z,
+                                   2);
+                  float dis2 = pow(p.x -
+                                       plane_list[plane_index2]
+                                           .cloud.points[pointIdxNKNSearch2[0]]
+                                           .x,
+                                   2) +
+                               pow(p.y -
+                                       plane_list[plane_index2]
+                                           .cloud.points[pointIdxNKNSearch2[0]]
+                                           .y,
+                                   2) +
+                               pow(p.z -
+                                       plane_list[plane_index2]
+                                           .cloud.points[pointIdxNKNSearch2[0]]
+                                           .z,
+                                   2);
+                  if ((dis1 <
+                           min_line_dis_threshold_ * min_line_dis_threshold_ &&
+                       dis2 <
+                           max_line_dis_threshold_ * max_line_dis_threshold_) ||
+                      ((dis1 <
+                            max_line_dis_threshold_ * max_line_dis_threshold_ &&
+                        dis2 < min_line_dis_threshold_ *
+                                   min_line_dis_threshold_))) {
+                    line_cloud.push_back(p);
                   }
                 }
+              }
+              if (line_cloud.size() > 10) {
+                line_cloud_list.push_back(line_cloud);
               }
             }
           }

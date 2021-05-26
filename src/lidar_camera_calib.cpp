@@ -6,7 +6,7 @@
 #include <iostream>
 #include <opencv2/core/eigen.hpp>
 
-// #define add_error
+#define add_error
 // instrins matrix
 Eigen::Matrix3d inner;
 // Distortion coefficient
@@ -119,7 +119,7 @@ private:
 
 void roughCalib(Calibration &calibra, Vector6d &calib_params,
                 double search_resolution, int max_iter) {
-  float match_dis = 15;
+  float match_dis = 20;
   Eigen::Vector3d fix_adjust_euler(0, 0, 0);
   for (int n = 0; n < 2; n++) {
     for (int round = 0; round < 3; round++) {
@@ -237,7 +237,7 @@ int main(int argc, char **argv) {
   cv::imshow("Initial extrinsic", init_img);
   cv::waitKey();
 
-  roughCalib(calibra, calib_params, DEG2RAD(0.2), 50);
+  roughCalib(calibra, calib_params, DEG2RAD(0.1), 50);
   cv::Mat test_img = calibra.getProjectionImg(calib_params);
   cv::imshow("After rough extrinsic", test_img);
   cv::waitKey();
@@ -245,9 +245,9 @@ int main(int argc, char **argv) {
   // Maximum match distance threshold: 15 pixels
   // If initial extrinsic lead to error over 15 pixels, the algorithm will not
   // work
-  int dis_threshold = 15;
+  int dis_threshold = 20;
   // Iteratively reducve the matching distance threshold
-  for (dis_threshold = 15; dis_threshold > 6; dis_threshold -= 1) {
+  for (dis_threshold = 20; dis_threshold > 6; dis_threshold -= 1) {
     // For each distance, do twice optimization
     for (int cnt = 0; cnt < 2; cnt++) {
       std::cout << "Iteration:" << iter++ << " Dis:" << dis_threshold
