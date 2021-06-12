@@ -40,7 +40,7 @@ public:
     T distortion = 1.0 + distorT[0] * r2 + distorT[1] * r4;
     T xd = xo * distortion + (distorT[2] * xo * yo + distorT[2] * xo * yo) +
            distorT[3] * (r2 + xo * xo + xo * xo);
-    T yd = yo * distortion + distorT[2] * xo * yo + distorT[2] * xo * yo +
+    T yd = yo * distortion + distorT[3] * xo * yo + distorT[3] * xo * yo +
            distorT[2] * (r2 + yo * yo + yo * yo);
     T ud = fx * xd + cx;
     T vd = fy * yd + cy;
@@ -83,7 +83,7 @@ public:
     T distortion = 1.0 + distorT[0] * r2 + distorT[1] * r4;
     T xd = xo * distortion + (distorT[2] * xo * yo + distorT[2] * xo * yo) +
            distorT[3] * (r2 + xo * xo + xo * xo);
-    T yd = yo * distortion + distorT[2] * xo * yo + distorT[2] * xo * yo +
+    T yd = yo * distortion + distorT[3] * xo * yo + distorT[3] * xo * yo +
            distorT[2] * (r2 + yo * yo + yo * yo);
     T ud = fx * xd + cx;
     T vd = fy * yd + cy;
