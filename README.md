@@ -8,7 +8,10 @@ corresponding to point cloud in A and C.</font>
 </div>
 
 ## Info
-The next version will support mechanical LiDAR such as Velodyne and Ouster.
+New features in next version:
+1. Support spinning LiDAR
+2. Support muti-scenes calibration (more accuracy)
+
 ## Related paper
 Related paper available on arxiv:  
 [Pixel-level Extrinsic Self Calibration of High Resolution LiDAR and Camera in Targetless Environments](http://arxiv.org/abs/2103.01627)
@@ -49,7 +52,11 @@ Download [Our recorded rosbag](https://drive.google.com/drive/folders/1pBvE_nrg6
 ```
 roslaunch livox_camera_calib calib.launch
 ```
-
+If you have trouble in downloading the rosbag files, you can download the same files from Baidu net-disk.
+```
+Link (链接): https://pan.baidu.com/s/197hsjmO42p5OIUjo_l4kkg 
+Extraction code (提取码): myfm
+```
 ## 4. Run on your own sensor set
 ### 4.1 Record data
 Record the point cloud and image msg to rosbag (15s or more for avia LiDAR). Then change the topic name in **config_outdoor.yaml** file
