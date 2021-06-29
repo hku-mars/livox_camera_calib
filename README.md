@@ -16,7 +16,7 @@ New features in next version:
 Related paper available on arxiv:  
 [Pixel-level Extrinsic Self Calibration of High Resolution LiDAR and Camera in Targetless Environments](http://arxiv.org/abs/2103.01627)
 ## Related video
-Related video: https://youtu.be/sp6PZTL2StY
+Related video: https://youtu.be/e6Vkkasc4JI
 
 ## 1. Prerequisites
 ### 1.1 **Ubuntu** and **ROS**
