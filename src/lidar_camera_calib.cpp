@@ -1,10 +1,10 @@
 #include "include/lidar_camera_calib.hpp"
-#include "ceres/ceres.h"
-#include "include/common.h"
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <opencv2/core/eigen.hpp>
+#include "ceres/ceres.h"
+#include "include/common.h"
 
 #define add_error
 // instrins matrix
@@ -16,7 +16,7 @@ Eigen::Vector3d transation;
 
 // Normal pnp solution
 class pnp_calib {
-public:
+ public:
   pnp_calib(PnPData p) { pd = p; }
   template <typename T>
   bool operator()(const T *_q, const T *_t, T *residuals) const {
@@ -53,13 +53,13 @@ public:
         new ceres::AutoDiffCostFunction<pnp_calib, 2, 4, 3>(new pnp_calib(p)));
   }
 
-private:
+ private:
   PnPData pd;
 };
 
 // pnp calib with direction vector
 class vpnp_calib {
-public:
+ public:
   vpnp_calib(VPnPData p) { pd = p; }
   template <typename T>
   bool operator()(const T *_q, const T *_t, T *residuals) const {
@@ -113,7 +113,7 @@ public:
         new vpnp_calib(p)));
   }
 
-private:
+ private:
   VPnPData pd;
 };
 
@@ -235,12 +235,12 @@ int main(int argc, char **argv) {
   calibra.init_rgb_cloud_pub_.publish(pub_cloud);
   cv::Mat init_img = calibra.getProjectionImg(calib_params);
   cv::imshow("Initial extrinsic", init_img);
-  cv::waitKey();
+  cv::waitKey(1000);
 
   roughCalib(calibra, calib_params, DEG2RAD(0.1), 50);
   cv::Mat test_img = calibra.getProjectionImg(calib_params);
   cv::imshow("After rough extrinsic", test_img);
-  cv::waitKey();
+  cv::waitKey(1000);
   int iter = 0;
   // Maximum match distance threshold: 15 pixels
   // If initial extrinsic lead to error over 15 pixels, the algorithm will not
@@ -336,7 +336,7 @@ int main(int argc, char **argv) {
   outfile << 0 << "," << 0 << "," << 0 << "," << 1 << std::endl;
   cv::Mat opt_img = calibra.getProjectionImg(calib_params);
   cv::imshow("Optimization result", opt_img);
-  cv::waitKey();
+  cv::waitKey(1000);
   Eigen::Matrix3d init_rotation;
   init_rotation << 0, -1.0, 0, 0, 0, -1.0, 1, 0, 0;
   Eigen::Matrix3d adjust_rotation;
