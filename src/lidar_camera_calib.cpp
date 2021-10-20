@@ -1,10 +1,10 @@
 #include "include/lidar_camera_calib.hpp"
+#include "ceres/ceres.h"
+#include "include/common.h"
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <opencv2/core/eigen.hpp>
-#include "ceres/ceres.h"
-#include "include/common.h"
 
 #define add_error
 // instrins matrix
@@ -16,7 +16,7 @@ Eigen::Vector3d transation;
 
 // Normal pnp solution
 class pnp_calib {
- public:
+public:
   pnp_calib(PnPData p) { pd = p; }
   template <typename T>
   bool operator()(const T *_q, const T *_t, T *residuals) const {
@@ -53,13 +53,13 @@ class pnp_calib {
         new ceres::AutoDiffCostFunction<pnp_calib, 2, 4, 3>(new pnp_calib(p)));
   }
 
- private:
+private:
   PnPData pd;
 };
 
 // pnp calib with direction vector
 class vpnp_calib {
- public:
+public:
   vpnp_calib(VPnPData p) { pd = p; }
   template <typename T>
   bool operator()(const T *_q, const T *_t, T *residuals) const {
@@ -113,13 +113,13 @@ class vpnp_calib {
         new vpnp_calib(p)));
   }
 
- private:
+private:
   VPnPData pd;
 };
 
 void roughCalib(Calibration &calibra, Vector6d &calib_params,
                 double search_resolution, int max_iter) {
-  float match_dis = 20;
+  float match_dis = 25;
   Eigen::Vector3d fix_adjust_euler(0, 0, 0);
   for (int n = 0; n < 2; n++) {
     for (int round = 0; round < 3; round++) {
@@ -245,9 +245,11 @@ int main(int argc, char **argv) {
   // Maximum match distance threshold: 15 pixels
   // If initial extrinsic lead to error over 15 pixels, the algorithm will not
   // work
-  int dis_threshold = 20;
+  int dis_threshold = 25;
+  bool opt_flag = true;
+
   // Iteratively reducve the matching distance threshold
-  for (dis_threshold = 20; dis_threshold > 6; dis_threshold -= 1) {
+  for (dis_threshold = 25; dis_threshold > 6; dis_threshold -= 1) {
     // For each distance, do twice optimization
     for (int cnt = 0; cnt < 2; cnt++) {
       std::cout << "Iteration:" << iter++ << " Dis:" << dis_threshold
@@ -265,6 +267,7 @@ int main(int argc, char **argv) {
       cv::imshow("Optimization", projection_img);
       cv::waitKey(100);
       Eigen::Quaterniond q(R);
+      Eigen::Vector3d ori_t = T;
       double ext[7];
       ext[0] = q.x();
       ext[1] = q.y();
@@ -318,6 +321,20 @@ int main(int argc, char **argv) {
       T[0] = m_t(0);
       T[1] = m_t(1);
       T[2] = m_t(2);
+      Eigen::Quaterniond opt_q(R);
+      std::cout << "q_dis:" << RAD2DEG(opt_q.angularDistance(q))
+                << " ,t_dis:" << (T - ori_t).norm() << std::endl;
+      // getchar();
+      if (opt_q.angularDistance(q) < DEG2RAD(0.005) &&
+          (T - ori_t).norm() < 0.005) {
+        opt_flag = false;
+      }
+      if (!opt_flag) {
+        break;
+      }
+    }
+    if (!opt_flag) {
+      break;
     }
   }
 

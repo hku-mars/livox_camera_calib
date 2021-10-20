@@ -3,7 +3,6 @@
 
 #include "CustomMsg.h"
 #include "common.h"
-#include "common.h"
 #include <Eigen/Core>
 #include <cv_bridge/cv_bridge.h>
 #include <fstream>
@@ -248,16 +247,18 @@ bool Calibration::loadCalibConfig(const std::string &config_file) {
       init_extrinsic_.at<double>(2, 1), init_extrinsic_.at<double>(2, 2);
   init_translation_vector_ << init_extrinsic_.at<double>(0, 3),
       init_extrinsic_.at<double>(1, 3), init_extrinsic_.at<double>(2, 3);
-  std::cout << "Init extrinsic: " << std::endl << init_extrinsic_ << std::endl;
+  std::cout << "Init extrinsic: " << std::endl
+            << init_rotation_matrix_ << std::endl;
   is_use_custom_msg_ = fSettings["Data.custom_msg"];
+  std::cout << "is_use_custom_msg_:" << is_use_custom_msg_ << std::endl;
   if (is_use_custom_msg_) {
     std::cout << "Point cloud type: custom msg" << std::endl;
   } else {
     std::cout << "Point cloud type: PointCloud2" << std::endl;
   }
-
   rgb_canny_threshold_ = fSettings["Canny.gray_threshold"];
   rgb_edge_minLen_ = fSettings["Canny.len_threshold"];
+
   voxel_size_ = fSettings["Voxel.size"];
   down_sample_size_ = fSettings["Voxel.down_sample_size"];
   plane_size_threshold_ = fSettings["Plane.min_points_size"];
@@ -267,6 +268,7 @@ bool Calibration::loadCalibConfig(const std::string &config_file) {
   max_line_dis_threshold_ = fSettings["Edge.max_dis_threshold"];
   theta_min_ = fSettings["Plane.normal_theta_min"];
   theta_max_ = fSettings["Plane.normal_theta_max"];
+
   theta_min_ = cos(DEG2RAD(theta_min_));
   theta_max_ = cos(DEG2RAD(theta_max_));
   color_intensity_threshold_ = fSettings["Color.intensity_threshold"];
@@ -276,6 +278,7 @@ bool Calibration::loadCalibConfig(const std::string &config_file) {
   adjust_euler_angle_[0] = DEG2RAD(adjust_euler_angle_[0]);
   adjust_euler_angle_[1] = DEG2RAD(adjust_euler_angle_[1]);
   adjust_euler_angle_[2] = DEG2RAD(adjust_euler_angle_[2]);
+  return true;
 };
 
 // Color the point cloud by rgb image using given extrinsic
@@ -559,8 +562,9 @@ cv::Mat Calibration::getConnectImg(
           cv::Scalar color = cv::Scalar(0, 255, 0);
           line_count++;
           if ((line_count % 3) == 0) {
-            cv::line(connect_img, cv::Point(search_cloud->points[i].x,
-                                            -search_cloud->points[i].y),
+            cv::line(connect_img,
+                     cv::Point(search_cloud->points[i].x,
+                               -search_cloud->points[i].y),
                      cv::Point(tree_cloud->points[pointIdxNKNSearch[j]].x,
                                -tree_cloud->points[pointIdxNKNSearch[j]].y),
                      color, 1);
@@ -947,36 +951,32 @@ void Calibration::calcLine(
                                              pointNKNSquaredDistance1) > 0) &&
                     (kdtree2->nearestKSearch(p, K, pointIdxNKNSearch2,
                                              pointNKNSquaredDistance2) > 0)) {
-                  float dis1 = pow(p.x -
-                                       plane_list[plane_index1]
-                                           .cloud.points[pointIdxNKNSearch1[0]]
-                                           .x,
-                                   2) +
-                               pow(p.y -
-                                       plane_list[plane_index1]
-                                           .cloud.points[pointIdxNKNSearch1[0]]
-                                           .y,
-                                   2) +
-                               pow(p.z -
-                                       plane_list[plane_index1]
-                                           .cloud.points[pointIdxNKNSearch1[0]]
-                                           .z,
-                                   2);
-                  float dis2 = pow(p.x -
-                                       plane_list[plane_index2]
-                                           .cloud.points[pointIdxNKNSearch2[0]]
-                                           .x,
-                                   2) +
-                               pow(p.y -
-                                       plane_list[plane_index2]
-                                           .cloud.points[pointIdxNKNSearch2[0]]
-                                           .y,
-                                   2) +
-                               pow(p.z -
-                                       plane_list[plane_index2]
-                                           .cloud.points[pointIdxNKNSearch2[0]]
-                                           .z,
-                                   2);
+                  float dis1 =
+                      pow(p.x - plane_list[plane_index1]
+                                    .cloud.points[pointIdxNKNSearch1[0]]
+                                    .x,
+                          2) +
+                      pow(p.y - plane_list[plane_index1]
+                                    .cloud.points[pointIdxNKNSearch1[0]]
+                                    .y,
+                          2) +
+                      pow(p.z - plane_list[plane_index1]
+                                    .cloud.points[pointIdxNKNSearch1[0]]
+                                    .z,
+                          2);
+                  float dis2 =
+                      pow(p.x - plane_list[plane_index2]
+                                    .cloud.points[pointIdxNKNSearch2[0]]
+                                    .x,
+                          2) +
+                      pow(p.y - plane_list[plane_index2]
+                                    .cloud.points[pointIdxNKNSearch2[0]]
+                                    .y,
+                          2) +
+                      pow(p.z - plane_list[plane_index2]
+                                    .cloud.points[pointIdxNKNSearch2[0]]
+                                    .z,
+                          2);
                   if ((dis1 <
                            min_line_dis_threshold_ * min_line_dis_threshold_ &&
                        dis2 <

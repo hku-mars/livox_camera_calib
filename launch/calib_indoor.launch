@@ -4,7 +4,7 @@
     type="lidar_camera_calib"
     name="lidar_camera_calib"
     args="$(find livox_camera_calib)/config/camera.yaml $(find livox_camera_calib)/config/config_indoor.yaml 
-   /media/ycj/C6CAB0E5CAB0D343/data/upload_data/indoor1.bag $(find livox_camera_calib)/result"
+   /media/ycj/T7/Bags/calibration/indoor1.bag $(find livox_camera_calib)/result"
     output="screen"
   />
   <node 
