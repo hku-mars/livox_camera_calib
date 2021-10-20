@@ -514,7 +514,7 @@ cv::Mat Calibration::fillImg(const cv::Mat &input_img,
         } else if ((current_depth - up_depth) > 5 &&
                    (current_depth - down_depth) > 5 && up_depth != 0 &&
                    down_depth != 0) {
-          fill_img.at<uchar>(y, x) = (up_depth + right_depth) / 2;
+          fill_img.at<uchar>(y, x) = (up_depth + down_depth) / 2;
         }
       }
     }
@@ -650,8 +650,8 @@ void Calibration::initVoxel(
       p_rgb.y = p_c.y;
       p_rgb.z = p_c.z;
       p_rgb.r = voxel_map[position]->voxel_color(0);
-      p_rgb.g = voxel_map[position]->voxel_color(0);
-      p_rgb.b = voxel_map[position]->voxel_color(0);
+      p_rgb.g = voxel_map[position]->voxel_color(1);
+      p_rgb.b = voxel_map[position]->voxel_color(2);
       test_cloud.push_back(p_rgb);
     } else {
       Voxel *voxel = new Voxel(voxel_size);
@@ -660,9 +660,9 @@ void Calibration::initVoxel(
       voxel_map[position]->voxel_origin[1] = position.y * voxel_size;
       voxel_map[position]->voxel_origin[2] = position.z * voxel_size;
       voxel_map[position]->cloud->push_back(p_c);
-      int r = rand() % 255;
-      int g = rand() % 255;
-      int b = rand() % 255;
+      int r = rand() % 256;
+      int g = rand() % 256;
+      int b = rand() % 256;
       voxel_map[position]->voxel_color << r, g, b;
     }
   }
@@ -827,7 +827,7 @@ void Calibration::calcLine(
         float point_dis_threshold = 0.00;
         if (theta > theta_max_ && theta < theta_min_) {
           // for (int i = 0; i < 6; i++) {
-          if (plane_list[plane_index1].cloud.size() > 0 ||
+          if (plane_list[plane_index1].cloud.size() > 0 &&
               plane_list[plane_index2].cloud.size() > 0) {
             float matrix[4][5];
             matrix[1][1] = a1;
