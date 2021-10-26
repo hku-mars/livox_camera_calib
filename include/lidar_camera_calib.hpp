@@ -319,8 +319,8 @@ void Calibration::colorCloud(
   color_cloud = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(
       new pcl::PointCloud<pcl::PointXYZRGB>);
   for (size_t i = 0; i < pts_2d.size(); i++) {
-    if (pts_2d[i].x > 1 && pts_2d[i].x < image_cols - 1 && pts_2d[i].y > 1 &&
-        pts_2d[i].y < image_rows - 1) {
+    if (pts_2d[i].x >= 0 && pts_2d[i].x <= image_cols && pts_2d[i].y >= 0 &&
+        pts_2d[i].y <= image_rows) {
       cv::Scalar color = rgb_img.at<cv::Vec3b>(pts_2d[i]);
       if (color[0] == 0 && color[1] == 0 && color[2] == 0) {
         continue;
