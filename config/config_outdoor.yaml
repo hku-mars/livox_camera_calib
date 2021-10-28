@@ -18,7 +18,7 @@ ExtrinsicMat: !!opencv-matrix
          0.0,   0.0,    0.0,    1.0]
 # Params for Canny Edge Extraction
 
-Canny.gray_threshold: 10
+Canny.gray_threshold: 20
 Canny.len_threshold: 200
 
 # Params for Voxel Cutting & Plane Fitting & Edge Extraction

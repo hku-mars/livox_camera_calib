@@ -245,11 +245,11 @@ int main(int argc, char **argv) {
   // Maximum match distance threshold: 15 pixels
   // If initial extrinsic lead to error over 15 pixels, the algorithm will not
   // work
-  int dis_threshold = 25;
+  int dis_threshold = 20;
   bool opt_flag = true;
 
   // Iteratively reducve the matching distance threshold
-  for (dis_threshold = 25; dis_threshold > 6; dis_threshold -= 1) {
+  for (dis_threshold = 20; dis_threshold > 6; dis_threshold -= 1) {
     // For each distance, do twice optimization
     for (int cnt = 0; cnt < 2; cnt++) {
       std::cout << "Iteration:" << iter++ << " Dis:" << dis_threshold
@@ -325,7 +325,7 @@ int main(int argc, char **argv) {
       std::cout << "q_dis:" << RAD2DEG(opt_q.angularDistance(q))
                 << " ,t_dis:" << (T - ori_t).norm() << std::endl;
       // getchar();
-      if (opt_q.angularDistance(q) < DEG2RAD(0.005) &&
+      if (opt_q.angularDistance(q) < DEG2RAD(0.01) &&
           (T - ori_t).norm() < 0.005) {
         opt_flag = false;
       }

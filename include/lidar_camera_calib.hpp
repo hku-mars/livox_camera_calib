@@ -271,6 +271,8 @@ bool Calibration::loadCalibConfig(const std::string &config_file) {
 
   theta_min_ = cos(DEG2RAD(theta_min_));
   theta_max_ = cos(DEG2RAD(theta_max_));
+  direction_theta_min_ = cos(DEG2RAD(30.0));
+  direction_theta_max_ = cos(DEG2RAD(150.0));
   color_intensity_threshold_ = fSettings["Color.intensity_threshold"];
   adjust_euler_angle_[0] = fSettings["AdjustEuler1"];
   adjust_euler_angle_[1] = fSettings["AdjustEuler2"];
