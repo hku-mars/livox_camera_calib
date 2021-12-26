@@ -83,7 +83,6 @@ Then we finally get a fine extrinsic after final optimization.
 ### 4.1 Record data
 Record the point cloud to pcd files and record image files.
 ### 4.2 Modify the **calib.yaml**
-<<<<<<< HEAD
 Change the data path to your local data path.  
 Provide the instrinsic matrix and distor coeffs for your camera.
 
