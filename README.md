@@ -8,9 +8,8 @@ corresponding to point cloud in A and C.</font>
 </div>
 
 ## Info
-New features in next version:
-1. Support spinning LiDAR
-2. Support muti-scenes calibration (more accuracy)
+New features:
+1. Support muti-scenes calibration (more accurate and robust)
 
 ## Related paper
 Related paper available on arxiv:  
@@ -48,23 +47,45 @@ source ~/catkin_ws/devel/setup.bash
 ```
 
 ## 3. Run our example
-Download [Our recorded rosbag](https://drive.google.com/drive/folders/1pBvE_nrg60IUo7PXDRsbBwDI68sq5LS6?usp=sharing) to your local path, and then change the path in **calib.launch** to your data path. Then directly run
+### 3.1 Single scene calibration
+Download [Our pcd and iamge file](https://drive.google.com/drive/folders/1mSvc8d9y3dElGUOgX-Qq_NY4YpRlmwUm?usp=sharing) to your local path, and then change the file path in **calib.yaml** to your data path. Then directly run
 ```
 roslaunch livox_camera_calib calib.launch
 ```
-If you have trouble in downloading the rosbag files, you can download the same files from Baidu net-disk.
+You will get the following result. (Sensor suite: Livox Avia + Realsense-D435i)
+<div align="center">
+    <img src="pics/single_calib_case.png" width = 100% >
+    <font color=#a0a0a0 size=2>An example of single scene calibration.</font>
+</div>
+
+### 3.2 Multi scenes calibration
+Download [Our pcd and iamge file](https://drive.google.com/drive/folders/1Q60YIwEpugcWBRHpm2MS28wfTGJh2D3e?usp=sharing) to your local path, and then change the file path in **multi_calib.yaml** to your data path. Then directly run
 ```
-Link (链接): https://pan.baidu.com/s/197hsjmO42p5OIUjo_l4kkg 
-Extraction code (提取码): myfm
+roslaunch livox_camera_calib multi_calib.launch
 ```
+The projected images obtained by initial extrinsic parameters. (Sensor Suite: Livox Horizon + MVS camera)
+<div align="center">
+    <img src="pics/initial_extrinsic.png" width = 100% >
+    <font color=#a0a0a0 size=2>An example of multi scenes calibration. The projected image obtained by theinitial extrinsic parameters</font>
+</div>
+Rough calibration is used to deal with the bad extrinsic.
+<div align="center">
+    <img src="pics/after_rough_calib.png" width = 100% >
+    <font color=#a0a0a0 size=2>The projected image obtained by the extrinsic parameters after rough calibration</font>
+</div>
+Then we finally get a fine extrinsic after final optimization.
+<div align="center">
+    <img src="pics/fine_extrinsic.png" width = 100% >
+    <font color=#a0a0a0 size=2>The projected image obtained by the extrinsic parameters after fine calibration</font>
+</div>
+
 ## 4. Run on your own sensor set
 ### 4.1 Record data
-Record the point cloud and image msg to rosbag (15s or more for avia LiDAR). Then change the topic name in **config_outdoor.yaml** file
+Record the point cloud to pcd files and record image files.
+### 4.2 Modify the **calib.yaml**
 ```
-# Topic name in rosbag
-PointCloudTopic: "/livox/lidar"
-ImageTopic: "/camera/color/image_raw"
+Change the data path to your local data path.
+Provide the instrinsic matrix and distor coeffs for your camera.
+
 ```
-### 4.2 Modify some params
-Modify the camera matrix and distortion coeffs in **camera.yaml**  
-Modify the initial extrinsic in **config_outdoor.yaml** if needed.
+

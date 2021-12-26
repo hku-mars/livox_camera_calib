@@ -1,0 +1,17 @@
+# Data path. adjust them!
+common:
+    image_path:  "/home/ycj/data/multi_spectral/12_24_calib/450/image"
+    pcd_path:  "/home/ycj/data/multi_spectral/12_24_calib/450/pcd"
+    result_path:  "/home/ycj/data/calib/extrinsic.txt"
+    data_num: 3
+# Camera Parameters. Adjust them!
+camera:
+    camera_matrix: [1704.1857 , 0.0,      886.5115,
+                    0.0,     1719.5228,  467.9244,
+                    0.0,     0.0,      1.0     ]
+    dist_coeffs: [-0.0963, 0.0708, 0.0011, -0.0017, 0.000000]
+
+# Calibration Parameters.!
+calib:
+    calib_config_file: "/home/ycj/catkin_ws/src/livox_camera_calib/config/config_outdoor.yaml"
+    use_rough_calib: true # set true if your initial_extrinsic is bad

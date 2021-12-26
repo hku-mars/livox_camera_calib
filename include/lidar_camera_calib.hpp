@@ -51,29 +51,17 @@ public:
   std::string lidar_topic_name_ = "";
   std::string image_topic_name_ = "";
 
-  bool is_enhance_rgb_ = false;
-  int is_enhance_depth_ = 0;
-  bool is_enhance_intensity_ = false;
-  bool is_fill_lidar_image_ = true;
-  int depth_edge_minLen_ = 80;
-  int intensity_edge_minLen_ = 100;
-  int rgb_edge_minLen_ = 100;
-  int depth_canny_threshold_ = 20;
+  int rgb_edge_minLen_ = 200;
   int rgb_canny_threshold_ = 20;
-  int intensity_canny_threshold_ = 20;
   int min_depth_ = 2.5;
   int max_depth_ = 50;
-  float min_cost_ = 1000;
-  int plane_max_size_ = 8;
+  int plane_max_size_ = 5;
   float detect_line_threshold_ = 0.02;
   int line_number_ = 0;
-  int color_intensity_threshold_ = 0;
-  cv::Mat connect_img_;
-  ProjectionType projection_type_ = DEPTH;
-  Eigen::Vector3d optimize_euler_angle_;
+  int color_intensity_threshold_ = 5;
   Eigen::Vector3d adjust_euler_angle_;
-  Calibration(const std::string &camera_file, const std::string &calib_file,
-              const std::string &bag_path);
+  Calibration(const std::string &image_file, const std::string &pcd_file,
+              const std::string &calib_config_file);
   void loadImgAndPointcloud(const std::string bag_path,
                             pcl::PointCloud<pcl::PointXYZI>::Ptr &origin_cloud,
                             cv::Mat &rgb_img);
@@ -138,19 +126,20 @@ public:
   cv::Mat init_extrinsic_;
 
   int is_use_custom_msg_;
-  float voxel_size_;
-  float down_sample_size_;
-  float ransac_dis_threshold_;
-  float plane_size_threshold_;
+  float voxel_size_ = 1.0;
+  float down_sample_size_ = 0.02;
+  float ransac_dis_threshold_ = 0.02;
+  float plane_size_threshold_ = 60;
   float theta_min_;
   float theta_max_;
   float direction_theta_min_;
   float direction_theta_max_;
-  float line_dis_threshold_;
-  float min_line_dis_threshold_;
-  float max_line_dis_threshold_;
+  float min_line_dis_threshold_ = 0.03;
+  float max_line_dis_threshold_ = 0.06;
 
   cv::Mat rgb_image_;
+  cv::Mat image_;
+  cv::Mat grey_image_;
   // 裁剪后的灰度图像
   cv::Mat cut_grey_image_;
 
@@ -171,38 +160,62 @@ public:
   pcl::PointCloud<pcl::PointXYZ>::Ptr lidar_edge_cloud_;
 };
 
-Calibration::Calibration(const std::string &camera_file,
-                         const std::string &calib_file,
-                         const std::string &bag_path) {
-  loadCameraConfig(camera_file);
-  loadCalibConfig(calib_file);
+Calibration::Calibration(const std::string &image_file,
+                         const std::string &pcd_file,
+                         const std::string &calib_config_file) {
 
-  loadImgAndPointcloud(bag_path, raw_lidar_cloud_, rgb_image_);
+  loadCalibConfig(calib_config_file);
+
+  image_ = cv::imread(image_file, cv::IMREAD_UNCHANGED);
+  if (!image_.data) {
+    std::string msg = "Can not load image from " + image_file;
+    ROS_ERROR_STREAM(msg.c_str());
+    exit(-1);
+  } else {
+    std::string msg = "Sucessfully load image!";
+    ROS_INFO_STREAM(msg.c_str());
+  }
+  width_ = image_.cols;
+  height_ = image_.rows;
+  // check rgb or gray
+  if (image_.type() == CV_8UC1) {
+    grey_image_ = image_;
+  } else if (image_.type() == CV_8UC3) {
+    cv::cvtColor(image_, grey_image_, cv::COLOR_BGR2GRAY);
+  } else {
+    std::string msg = "Unsupported image type, please use CV_8UC3 or CV_8UC1";
+    ROS_ERROR_STREAM(msg.c_str());
+    exit(-1);
+  }
+  cv::Mat edge_image;
+
+  edgeDetector(rgb_canny_threshold_, rgb_edge_minLen_, grey_image_, edge_image,
+               rgb_egde_cloud_);
+  std::string msg = "Sucessfully extract edge from image, edge size:" +
+                    std::to_string(rgb_egde_cloud_->size());
+  ROS_INFO_STREAM(msg.c_str());
+
+  raw_lidar_cloud_ =
+      pcl::PointCloud<pcl::PointXYZI>::Ptr(new pcl::PointCloud<pcl::PointXYZI>);
+  ROS_INFO_STREAM("Loading point cloud from pcd file.");
+  if (!pcl::io::loadPCDFile(pcd_file, *raw_lidar_cloud_)) {
+    // down_sampling_voxel(*raw_lidar_cloud_, 0.02);
+    std::string msg = "Sucessfully load pcd, pointcloud size: " +
+                      std::to_string(raw_lidar_cloud_->size());
+    ROS_INFO_STREAM(msg.c_str());
+  } else {
+    std::string msg = "Unable to load " + pcd_file;
+    ROS_ERROR_STREAM(msg.c_str());
+    exit(-1);
+  }
 
   Eigen::Vector3d lwh(50, 50, 30);
   Eigen::Vector3d origin(0, -25, -10);
   std::vector<VoxelGrid> voxel_list;
   std::unordered_map<VOXEL_LOC, Voxel *> voxel_map;
-
   initVoxel(raw_lidar_cloud_, voxel_size_, voxel_map);
   LiDAREdgeExtraction(voxel_map, ransac_dis_threshold_, plane_size_threshold_,
                       plane_line_cloud_);
-
-  if (!rgb_image_.data) {
-    std::string msg = "Can not load image from " + bag_path;
-    ROS_ERROR_STREAM(msg.c_str());
-    exit(-1);
-  }
-  ROS_INFO_STREAM("Load all data!");
-
-  // 处理RGB图像，后续不用重复处理
-  cv::cvtColor(rgb_image_, cut_grey_image_, cv::COLOR_BGR2GRAY);
-  cv::Mat rgb_edge_img;
-  if (is_enhance_rgb_) {
-    cv::equalizeHist(cut_grey_image_, cut_grey_image_);
-  }
-  edgeDetector(rgb_canny_threshold_, rgb_edge_minLen_, cut_grey_image_,
-               rgb_edge_img, rgb_egde_cloud_);
 };
 
 bool Calibration::loadCameraConfig(const std::string &camera_file) {
@@ -236,9 +249,9 @@ bool Calibration::loadCalibConfig(const std::string &config_file) {
     std::cerr << "Failed to open settings file at: " << config_file
               << std::endl;
     exit(-1);
+  } else {
+    ROS_INFO("Sucessfully load calib config file");
   }
-  fSettings["PointCloudTopic"] >> lidar_topic_name_;
-  fSettings["ImageTopic"] >> image_topic_name_;
   fSettings["ExtrinsicMat"] >> init_extrinsic_;
   init_rotation_matrix_ << init_extrinsic_.at<double>(0, 0),
       init_extrinsic_.at<double>(0, 1), init_extrinsic_.at<double>(0, 2),
@@ -247,18 +260,8 @@ bool Calibration::loadCalibConfig(const std::string &config_file) {
       init_extrinsic_.at<double>(2, 1), init_extrinsic_.at<double>(2, 2);
   init_translation_vector_ << init_extrinsic_.at<double>(0, 3),
       init_extrinsic_.at<double>(1, 3), init_extrinsic_.at<double>(2, 3);
-  std::cout << "Init extrinsic: " << std::endl
-            << init_rotation_matrix_ << std::endl;
-  is_use_custom_msg_ = fSettings["Data.custom_msg"];
-  std::cout << "is_use_custom_msg_:" << is_use_custom_msg_ << std::endl;
-  if (is_use_custom_msg_) {
-    std::cout << "Point cloud type: custom msg" << std::endl;
-  } else {
-    std::cout << "Point cloud type: PointCloud2" << std::endl;
-  }
   rgb_canny_threshold_ = fSettings["Canny.gray_threshold"];
   rgb_edge_minLen_ = fSettings["Canny.len_threshold"];
-
   voxel_size_ = fSettings["Voxel.size"];
   down_sample_size_ = fSettings["Voxel.down_sample_size"];
   plane_size_threshold_ = fSettings["Plane.min_points_size"];
@@ -268,31 +271,31 @@ bool Calibration::loadCalibConfig(const std::string &config_file) {
   max_line_dis_threshold_ = fSettings["Edge.max_dis_threshold"];
   theta_min_ = fSettings["Plane.normal_theta_min"];
   theta_max_ = fSettings["Plane.normal_theta_max"];
-
   theta_min_ = cos(DEG2RAD(theta_min_));
   theta_max_ = cos(DEG2RAD(theta_max_));
   direction_theta_min_ = cos(DEG2RAD(30.0));
   direction_theta_max_ = cos(DEG2RAD(150.0));
   color_intensity_threshold_ = fSettings["Color.intensity_threshold"];
-  adjust_euler_angle_[0] = fSettings["AdjustEuler1"];
-  adjust_euler_angle_[1] = fSettings["AdjustEuler2"];
-  adjust_euler_angle_[2] = fSettings["AdjustEuler3"];
-  adjust_euler_angle_[0] = DEG2RAD(adjust_euler_angle_[0]);
-  adjust_euler_angle_[1] = DEG2RAD(adjust_euler_angle_[1]);
-  adjust_euler_angle_[2] = DEG2RAD(adjust_euler_angle_[2]);
   return true;
 };
 
 // Color the point cloud by rgb image using given extrinsic
 void Calibration::colorCloud(
-    const Vector6d &extrinsic_params, const int density, const cv::Mat &rgb_img,
+    const Vector6d &extrinsic_params, const int density,
+    const cv::Mat &input_image,
     const pcl::PointCloud<pcl::PointXYZI>::Ptr &lidar_cloud,
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr &color_cloud) {
+  cv::Mat rgb_img;
+  if (input_image.type() == CV_8UC3) {
+    rgb_img = input_image;
+  } else if (input_image.type() == CV_8UC1) {
+    cv::cvtColor(input_image, rgb_img, cv::COLOR_GRAY2BGR);
+  }
   std::vector<cv::Point3f> pts_3d;
   for (size_t i = 0; i < lidar_cloud->size(); i += density) {
     pcl::PointXYZI point = lidar_cloud->points[i];
     float depth = sqrt(pow(point.x, 2) + pow(point.y, 2) + pow(point.z, 2));
-    if (depth > min_depth_ && depth < 50 &&
+    if (depth > 2 && depth < 50 &&
         point.intensity >= color_intensity_threshold_) {
       pts_3d.emplace_back(cv::Point3f(point.x, point.y, point.z));
     }
@@ -321,9 +324,10 @@ void Calibration::colorCloud(
   color_cloud = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(
       new pcl::PointCloud<pcl::PointXYZRGB>);
   for (size_t i = 0; i < pts_2d.size(); i++) {
-    if (pts_2d[i].x >= 0 && pts_2d[i].x <= image_cols && pts_2d[i].y >= 0 &&
-        pts_2d[i].y <= image_rows) {
-      cv::Scalar color = rgb_img.at<cv::Vec3b>(pts_2d[i]);
+    if (pts_2d[i].x >= 0 && pts_2d[i].x < image_cols && pts_2d[i].y >= 0 &&
+        pts_2d[i].y < image_rows) {
+      cv::Scalar color =
+          rgb_img.at<cv::Vec3b>((int)pts_2d[i].y, (int)pts_2d[i].x);
       if (color[0] == 0 && color[1] == 0 && color[2] == 0) {
         continue;
       }
@@ -416,7 +420,7 @@ void Calibration::projection(
     }
   }
   cv::Mat camera_matrix =
-      (cv::Mat_<double>(3, 3) << fx_, s_, cx_, 0.0, fy_, cy_, 0.0, 0.0, 1.0);
+      (cv::Mat_<double>(3, 3) << fx_, 0.0, cx_, 0.0, fy_, cy_, 0.0, 0.0, 1.0);
   cv::Mat distortion_coeff =
       (cv::Mat_<double>(1, 5) << k1_, k2_, p1_, p2_, k3_);
   cv::Mat r_vec =
@@ -1018,18 +1022,19 @@ void Calibration::buildVPnp(
     }
     img_pts_container.push_back(row_pts_container);
   }
-  std::vector<cv::Point3f> pts_3d;
+  std::vector<cv::Point3d> pts_3d;
   Eigen::AngleAxisd rotation_vector3;
   rotation_vector3 =
       Eigen::AngleAxisd(extrinsic_params[0], Eigen::Vector3d::UnitZ()) *
       Eigen::AngleAxisd(extrinsic_params[1], Eigen::Vector3d::UnitY()) *
       Eigen::AngleAxisd(extrinsic_params[2], Eigen::Vector3d::UnitX());
+
   for (size_t i = 0; i < lidar_line_cloud_3d->size(); i++) {
     pcl::PointXYZI point_3d = lidar_line_cloud_3d->points[i];
-    pts_3d.emplace_back(cv::Point3f(point_3d.x, point_3d.y, point_3d.z));
+    pts_3d.emplace_back(cv::Point3d(point_3d.x, point_3d.y, point_3d.z));
   }
   cv::Mat camera_matrix =
-      (cv::Mat_<double>(3, 3) << fx_, s_, cx_, 0.0, fy_, cy_, 0.0, 0.0, 1.0);
+      (cv::Mat_<double>(3, 3) << fx_, 0.0, cx_, 0.0, fy_, cy_, 0.0, 0.0, 1.0);
   cv::Mat distortion_coeff =
       (cv::Mat_<double>(1, 5) << k1_, k2_, p1_, p2_, k3_);
   cv::Mat r_vec =
@@ -1040,7 +1045,13 @@ void Calibration::buildVPnp(
   cv::Mat t_vec = (cv::Mat_<double>(3, 1) << extrinsic_params[3],
                    extrinsic_params[4], extrinsic_params[5]);
   // project 3d-points into image view
-  std::vector<cv::Point2f> pts_2d;
+  std::vector<cv::Point2d> pts_2d;
+  // debug
+  // std::cout << "camera_matrix:" << camera_matrix << std::endl;
+  // std::cout << "distortion_coeff:" << distortion_coeff << std::endl;
+  // std::cout << "r_vec:" << r_vec << std::endl;
+  // std::cout << "t_vec:" << t_vec << std::endl;
+  // std::cout << "pts 3d size:" << pts_3d.size() << std::endl;
   cv::projectPoints(pts_3d, r_vec, t_vec, camera_matrix, distortion_coeff,
                     pts_2d);
   pcl::PointCloud<pcl::PointXYZ>::Ptr line_edge_cloud_2d(
@@ -1423,9 +1434,14 @@ cv::Mat Calibration::getProjectionImg(const Vector6d &extrinsic_params) {
       map_img.at<cv::Vec3b>(y, x)[2] = r;
     }
   }
-  // cv::imshow("map jet", map_img);
-  // cv::waitKey();
-  cv::Mat merge_img = 0.5 * map_img + 0.8 * rgb_image_;
+  cv::Mat merge_img;
+  if (image_.type() == CV_8UC3) {
+    merge_img = 0.5 * map_img + 0.8 * image_;
+  } else {
+    cv::Mat src_rgb;
+    cv::cvtColor(image_, src_rgb, cv::COLOR_GRAY2BGR);
+    merge_img = 0.5 * map_img + 0.8 * src_rgb;
+  }
   return merge_img;
 }
 

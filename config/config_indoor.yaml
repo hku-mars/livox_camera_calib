@@ -4,10 +4,6 @@
 PointCloudTopic: "/livox/lidar"
 ImageTopic: "/camera/color/image_raw"
 
-# Lidar Data type(custom msg or pointcloud2)
-Data.custom_msg: 0
-# Initial extrinsic (usually provided by hand measurement or cad design)
-
 ExtrinsicMat: !!opencv-matrix
   rows: 4
   cols: 4
@@ -31,10 +27,3 @@ Plane.max_size: 8
 Ransac.dis_threshold: 0.02
 Edge.min_dis_threshold: 0.03
 Edge.max_dis_threshold: 0.06
-AdjustEuler1: -2
-AdjustEuler2: -0.5
-AdjustEuler3: 2
-
-# Params for color point clouds
-Color.dense: 0.1
-Color.intensity_threshold: 5

@@ -1,12 +1,9 @@
 <launch>
+  <rosparam command="load" file="$(find livox_camera_calib)/config/calib.yaml" />
   <node 
     pkg="livox_camera_calib"
     type="lidar_camera_calib"
     name="lidar_camera_calib"
-    args="$(find livox_camera_calib)/config/camera.yaml 
-          $(find livox_camera_calib)/config/config_outdoor.yaml 
-          /media/ycj/T7/Bags/calibration/outdoor3.bag
-          $(find livox_camera_calib)/result"
     output="screen"
   />
   <node 

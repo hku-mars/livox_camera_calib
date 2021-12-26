@@ -1,0 +1,17 @@
+# Data path. adjust them!
+common:
+    image_file: "/home/ycj/data/calib/image/3.png"
+    pcd_file: "/home/ycj/data/calib/pcd/3.pcd"
+    result_file: "/home/ycj/data/calib/extrinsic.txt"
+
+# Camera Parameters. Adjust them!
+camera:
+    camera_matrix: [1364.45, 0.0,      958.327,
+                0.0,     1366.46,  535.074,
+                0.0,     0.0,      1.0     ]
+    dist_coeffs: [0.0958277, -0.198233, -0.000147133, -0.000430056, 0.000000]
+
+# Calibration Parameters.!
+calib:
+    calib_config_file: "/home/ycj/catkin_ws/src/livox_camera_calib/config/config_indoor.yaml"
+    use_rough_calib: false # set true if your initial_extrinsic is bad

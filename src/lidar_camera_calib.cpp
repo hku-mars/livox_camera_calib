@@ -6,7 +6,22 @@
 #include <iostream>
 #include <opencv2/core/eigen.hpp>
 
-#define add_error
+using namespace std;
+
+// Data path
+string image_file;
+string pcd_file;
+string result_file;
+
+// Camera config
+vector<double> camera_matrix;
+vector<double> dist_coeffs;
+double width;
+double height;
+
+// Calib config
+bool use_rough_calib;
+string calib_config_file;
 // instrins matrix
 Eigen::Matrix3d inner;
 // Distortion coefficient
@@ -150,13 +165,6 @@ void roughCalib(Calibration &calibra, Vector6d &calib_params,
         calibra.buildVPnp(test_params, match_dis, false,
                           calibra.rgb_egde_cloud_, calibra.plane_line_cloud_,
                           pnp_list);
-        // std::vector<float> residual_list;
-        // calibra.calcResidual(test_params, pnp_list, residual_list);
-        // float mean_residual = 0;
-        // for (int j = 0; j < residual_list.size(); j++) {
-        //   mean_residual += fabs(residual_list[j]);
-        // }
-        // mean_residual = mean_residual / residual_list.size();
         float cost = (calibra.plane_line_cloud_->size() - pnp_list.size()) *
                      1.0 / calibra.plane_line_cloud_->size();
         if (cost < min_cost) {
@@ -181,11 +189,27 @@ int main(int argc, char **argv) {
   ros::init(argc, argv, "lidarCamCalib");
   ros::NodeHandle nh;
   ros::Rate loop_rate(0.1);
-  const std::string CameraConfigPath = std::string(argv[1]);
-  const std::string CalibSettingPath = std::string(argv[2]);
-  const std::string BagPath = std::string(argv[3]);
-  const std::string ResultPath = std::string(argv[4]);
-  Calibration calibra(CameraConfigPath, CalibSettingPath, BagPath);
+
+  nh.param<string>("common/image_file", image_file, "");
+  nh.param<string>("common/pcd_file", pcd_file, "");
+  nh.param<string>("common/result_file", result_file, "");
+  std::cout << "pcd_file path:" << pcd_file << std::endl;
+  nh.param<vector<double>>("camera/camera_matrix", camera_matrix,
+                           vector<double>());
+  nh.param<vector<double>>("camera/dist_coeffs", dist_coeffs, vector<double>());
+  nh.param<bool>("calib/use_rough_calib", use_rough_calib, false);
+  nh.param<string>("calib/calib_config_file", calib_config_file, "");
+
+  Calibration calibra(image_file, pcd_file, calib_config_file);
+  calibra.fx_ = camera_matrix[0];
+  calibra.cx_ = camera_matrix[2];
+  calibra.fy_ = camera_matrix[4];
+  calibra.cy_ = camera_matrix[5];
+  calibra.k1_ = dist_coeffs[0];
+  calibra.k2_ = dist_coeffs[1];
+  calibra.p1_ = dist_coeffs[2];
+  calibra.p2_ = dist_coeffs[3];
+  calibra.k3_ = dist_coeffs[4];
   Eigen::Vector3d init_euler_angle =
       calibra.init_rotation_matrix_.eulerAngles(2, 1, 0);
   Eigen::Vector3d init_transation = calibra.init_translation_vector_;
@@ -205,19 +229,11 @@ int main(int argc, char **argv) {
   distor << calibra.k1_, calibra.k2_, calibra.p1_, calibra.p2_;
   R = calibra.init_rotation_matrix_;
   T = calibra.init_translation_vector_;
+  std::cout << "Initial rotation matrix:" << std::endl
+            << calibra.init_rotation_matrix_ << std::endl;
+  std::cout << "Initial translation:"
+            << calibra.init_translation_vector_.transpose() << std::endl;
   bool use_vpnp = true;
-#ifdef add_error
-  // add error to the init extrinsic, comment them in real calibration
-  Eigen::Vector3d error_euler_angle;
-  error_euler_angle << calibra.adjust_euler_angle_[0],
-      calibra.adjust_euler_angle_[1], calibra.adjust_euler_angle_[2];
-  Eigen::Matrix3d rotation_matrix_error;
-  rotation_matrix_error =
-      Eigen::AngleAxisd(error_euler_angle[0], Eigen::Vector3d::UnitZ()) *
-      Eigen::AngleAxisd(error_euler_angle[1], Eigen::Vector3d::UnitY()) *
-      Eigen::AngleAxisd(error_euler_angle[2], Eigen::Vector3d::UnitX());
-  R = R * rotation_matrix_error;
-#endif
   Eigen::Vector3d euler = R.eulerAngles(2, 1, 0);
   calib_params[0] = euler[0];
   calib_params[1] = euler[1];
@@ -228,16 +244,19 @@ int main(int argc, char **argv) {
   sensor_msgs::PointCloud2 pub_cloud;
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr rgb_cloud(
       new pcl::PointCloud<pcl::PointXYZRGB>);
-  calibra.colorCloud(calib_params, 1, calibra.rgb_image_,
-                     calibra.raw_lidar_cloud_, rgb_cloud);
+  calibra.colorCloud(calib_params, 5, calibra.image_, calibra.raw_lidar_cloud_,
+                     rgb_cloud);
   pcl::toROSMsg(*rgb_cloud, pub_cloud);
   pub_cloud.header.frame_id = "livox";
   calibra.init_rgb_cloud_pub_.publish(pub_cloud);
   cv::Mat init_img = calibra.getProjectionImg(calib_params);
   cv::imshow("Initial extrinsic", init_img);
+  cv::imwrite("/home/ycj/data/calib/init.png", init_img);
   cv::waitKey(1000);
 
-  roughCalib(calibra, calib_params, DEG2RAD(0.1), 50);
+  if (use_rough_calib) {
+    roughCalib(calibra, calib_params, DEG2RAD(0.1), 50);
+  }
   cv::Mat test_img = calibra.getProjectionImg(calib_params);
   cv::imshow("After rough extrinsic", test_img);
   cv::waitKey(1000);
@@ -249,7 +268,7 @@ int main(int argc, char **argv) {
   bool opt_flag = true;
 
   // Iteratively reducve the matching distance threshold
-  for (dis_threshold = 20; dis_threshold > 6; dis_threshold -= 1) {
+  for (dis_threshold = 20; dis_threshold > 8; dis_threshold -= 1) {
     // For each distance, do twice optimization
     for (int cnt = 0; cnt < 2; cnt++) {
       std::cout << "Iteration:" << iter++ << " Dis:" << dis_threshold
@@ -325,13 +344,13 @@ int main(int argc, char **argv) {
       std::cout << "q_dis:" << RAD2DEG(opt_q.angularDistance(q))
                 << " ,t_dis:" << (T - ori_t).norm() << std::endl;
       // getchar();
-      if (opt_q.angularDistance(q) < DEG2RAD(0.01) &&
-          (T - ori_t).norm() < 0.005) {
-        opt_flag = false;
-      }
-      if (!opt_flag) {
-        break;
-      }
+      // if (opt_q.angularDistance(q) < DEG2RAD(0.01) &&
+      //     (T - ori_t).norm() < 0.005) {
+      //   opt_flag = false;
+      // }
+      // if (!opt_flag) {
+      //   break;
+      // }
     }
     if (!opt_flag) {
       break;
@@ -344,7 +363,6 @@ int main(int argc, char **argv) {
   R = Eigen::AngleAxisd(calib_params[0], Eigen::Vector3d::UnitZ()) *
       Eigen::AngleAxisd(calib_params[1], Eigen::Vector3d::UnitY()) *
       Eigen::AngleAxisd(calib_params[2], Eigen::Vector3d::UnitX());
-  std::string result_file = ResultPath + "/extrinsic.txt";
   std::ofstream outfile(result_file);
   for (int i = 0; i < 3; i++) {
     outfile << R(i, 0) << "," << R(i, 1) << "," << R(i, 2) << "," << T[i]
@@ -353,6 +371,7 @@ int main(int argc, char **argv) {
   outfile << 0 << "," << 0 << "," << 0 << "," << 1 << std::endl;
   cv::Mat opt_img = calibra.getProjectionImg(calib_params);
   cv::imshow("Optimization result", opt_img);
+  cv::imwrite("/home/ycj/data/calib/opt.png", opt_img);
   cv::waitKey(1000);
   Eigen::Matrix3d init_rotation;
   init_rotation << 0, -1.0, 0, 0, 0, -1.0, 1, 0, 0;
@@ -366,13 +385,13 @@ int main(int argc, char **argv) {
     sensor_msgs::PointCloud2 pub_cloud;
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr rgb_cloud(
         new pcl::PointCloud<pcl::PointXYZRGB>);
-    calibra.colorCloud(calib_params, 1, calibra.rgb_image_,
+    calibra.colorCloud(calib_params, 5, calibra.image_,
                        calibra.raw_lidar_cloud_, rgb_cloud);
     pcl::toROSMsg(*rgb_cloud, pub_cloud);
     pub_cloud.header.frame_id = "livox";
     calibra.rgb_cloud_pub_.publish(pub_cloud);
     sensor_msgs::ImagePtr img_msg =
-        cv_bridge::CvImage(std_msgs::Header(), "bgr8", calibra.rgb_image_)
+        cv_bridge::CvImage(std_msgs::Header(), "bgr8", calibra.image_)
             .toImageMsg();
     calibra.image_pub_.publish(img_msg);
     std::cout << "push enter to publish again" << std::endl;
