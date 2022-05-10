@@ -285,7 +285,13 @@ int main(int argc, char **argv) {
       cv::Mat projection_img = calibra.getProjectionImg(calib_params);
       cv::imshow("Optimization", projection_img);
       cv::waitKey(100);
-      Eigen::Quaterniond q(R);
+      Eigen::Vector3d euler_angle(calib_params[0], calib_params[1],
+                                  calib_params[2]);
+      Eigen::Matrix3d opt_init_R;
+      opt_init_R = Eigen::AngleAxisd(euler_angle[0], Eigen::Vector3d::UnitZ()) *
+                   Eigen::AngleAxisd(euler_angle[1], Eigen::Vector3d::UnitY()) *
+                   Eigen::AngleAxisd(euler_angle[2], Eigen::Vector3d::UnitX());
+      Eigen::Quaterniond q(opt_init_R);
       Eigen::Vector3d ori_t = T;
       double ext[7];
       ext[0] = q.x();
@@ -327,7 +333,7 @@ int main(int argc, char **argv) {
       ceres::Solve(options, &problem, &summary);
       std::cout << summary.BriefReport() << std::endl;
       Eigen::Matrix3d rot = m_q.toRotationMatrix();
-      Eigen::Vector3d euler_angle = rot.eulerAngles(2, 1, 0);
+      euler_angle = rot.eulerAngles(2, 1, 0);
       // std::cout << rot << std::endl;
       // std::cout << m_t << std::endl;
       calib_params[0] = euler_angle[0];
