@@ -1,7 +1,7 @@
 # Data path. adjust them!
 common:
-    image_path:  "/home/ycj/data/multi_spectral/12_24_calib/450/image"
-    pcd_path:  "/home/ycj/data/multi_spectral/12_24_calib/450/pcd"
+    image_path:  "/home/ycj/data/calib/image/old"
+    pcd_path:  "/home/ycj/data/calib/pcd/old"
     result_path:  "/home/ycj/data/calib/extrinsic.txt"
     data_num: 3
 # Camera Parameters. Adjust them!

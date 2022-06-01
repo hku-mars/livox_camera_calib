@@ -374,9 +374,10 @@ int main(int argc, char **argv) {
   Eigen::Matrix3d adjust_rotation;
   adjust_rotation = init_rotation.inverse() * R;
   Eigen::Vector3d adjust_euler = adjust_rotation.eulerAngles(2, 1, 0);
-  outfile << RAD2DEG(adjust_euler[0]) << "," << RAD2DEG(adjust_euler[1]) << ","
-          << RAD2DEG(adjust_euler[2]) << "," << 0 << "," << 0 << "," << 0
-          << std::endl;
+  // outfile << RAD2DEG(adjust_euler[0]) << "," << RAD2DEG(adjust_euler[1]) <<
+  // ","
+  //         << RAD2DEG(adjust_euler[2]) << "," << 0 << "," << 0 << "," << 0
+  //         << std::endl;
   while (ros::ok()) {
     sensor_msgs::PointCloud2 pub_cloud;
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr rgb_cloud(

@@ -14,4 +14,4 @@ camera:
 # Calibration Parameters.!
 calib:
     calib_config_file: "/home/ycj/catkin_ws/src/livox_camera_calib/config/config_outdoor.yaml"
-    use_rough_calib: false # set true if your initial_extrinsic is bad
+    use_rough_calib: true # set true if your initial_extrinsic is bad
