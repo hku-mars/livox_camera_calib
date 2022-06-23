@@ -114,12 +114,15 @@ public:
       Eigen::Matrix<T, 1, 2> nt = pd.direction.transpose().cast<T>();
       Eigen::Matrix<T, 2, 2> V = n * nt;
       V = I - V;
-      Eigen::Matrix<T, 2, 2> R = Eigen::Matrix<float, 2, 2>::Zero().cast<T>();
+      Eigen::Matrix<T, 2, 1> R = Eigen::Matrix<float, 2, 1>::Zero().cast<T>();
       R.coeffRef(0, 0) = residuals[0];
-      R.coeffRef(1, 1) = residuals[1];
-      R = V * R * V.transpose();
+      R.coeffRef(1, 0) = residuals[1];
+      R = V * R;
+      // Eigen::Matrix<T, 2, 2> R = Eigen::Matrix<float, 2,
+      // 2>::Zero().cast<T>(); R.coeffRef(0, 0) = residuals[0];
+      // R.coeffRef(1, 1) = residuals[1]; R = V * R * V.transpose();
       residuals[0] = R.coeffRef(0, 0);
-      residuals[1] = R.coeffRef(1, 1);
+      residuals[1] = R.coeffRef(1, 0);
     }
     return true;
   }
@@ -285,7 +288,13 @@ int main(int argc, char **argv) {
       cv::Mat projection_img = calibra.getProjectionImg(calib_params);
       cv::imshow("Optimization", projection_img);
       cv::waitKey(100);
-      Eigen::Quaterniond q(R);
+      Eigen::Vector3d euler_angle(calib_params[0], calib_params[1],
+                                  calib_params[2]);
+      Eigen::Matrix3d opt_init_R;
+      opt_init_R = Eigen::AngleAxisd(euler_angle[0], Eigen::Vector3d::UnitZ()) *
+                   Eigen::AngleAxisd(euler_angle[1], Eigen::Vector3d::UnitY()) *
+                   Eigen::AngleAxisd(euler_angle[2], Eigen::Vector3d::UnitX());
+      Eigen::Quaterniond q(opt_init_R);
       Eigen::Vector3d ori_t = T;
       double ext[7];
       ext[0] = q.x();
@@ -327,7 +336,7 @@ int main(int argc, char **argv) {
       ceres::Solve(options, &problem, &summary);
       std::cout << summary.BriefReport() << std::endl;
       Eigen::Matrix3d rot = m_q.toRotationMatrix();
-      Eigen::Vector3d euler_angle = rot.eulerAngles(2, 1, 0);
+      euler_angle = rot.eulerAngles(2, 1, 0);
       // std::cout << rot << std::endl;
       // std::cout << m_t << std::endl;
       calib_params[0] = euler_angle[0];
@@ -378,9 +387,10 @@ int main(int argc, char **argv) {
   Eigen::Matrix3d adjust_rotation;
   adjust_rotation = init_rotation.inverse() * R;
   Eigen::Vector3d adjust_euler = adjust_rotation.eulerAngles(2, 1, 0);
-  outfile << RAD2DEG(adjust_euler[0]) << "," << RAD2DEG(adjust_euler[1]) << ","
-          << RAD2DEG(adjust_euler[2]) << "," << 0 << "," << 0 << "," << 0
-          << std::endl;
+  // outfile << RAD2DEG(adjust_euler[0]) << "," << RAD2DEG(adjust_euler[1]) <<
+  // ","
+  //         << RAD2DEG(adjust_euler[2]) << "," << 0 << "," << 0 << "," << 0
+  //         << std::endl;
   while (ros::ok()) {
     sensor_msgs::PointCloud2 pub_cloud;
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr rgb_cloud(

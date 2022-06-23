@@ -1136,7 +1136,7 @@ void Calibration::buildVPnp(
         std::vector<Eigen::Vector2d> points_cam;
         for (size_t i = 0; i < pointIdxNKNSearch.size(); i++) {
           Eigen::Vector2d p(tree_cloud->points[pointIdxNKNSearch[i]].x,
-                            tree_cloud->points[pointIdxNKNSearch[i]].y);
+                            -tree_cloud->points[pointIdxNKNSearch[i]].y);
           points_cam.push_back(p);
         }
         calcDirection(points_cam, direction_cam);
@@ -1145,7 +1145,7 @@ void Calibration::buildVPnp(
         for (size_t i = 0; i < pointIdxNKNSearch.size(); i++) {
           Eigen::Vector2d p(
               tree_cloud_lidar->points[pointIdxNKNSearchLidar[i]].x,
-              tree_cloud_lidar->points[pointIdxNKNSearchLidar[i]].y);
+              -tree_cloud_lidar->points[pointIdxNKNSearchLidar[i]].y);
           points_lidar.push_back(p);
         }
         calcDirection(points_lidar, direction_lidar);
