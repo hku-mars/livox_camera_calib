@@ -7,13 +7,36 @@
 #include <ros/ros.h>
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
+#include <filesystem>
 
 using namespace std;
 
 string bag_file;
 string lidar_topic;
 string pcd_file;
+string pcd_dir;
 bool is_custom_msg;
+
+string get_pcd_dir(string s)
+{
+  // get the pcd directory from pcd file
+  int start_idx = 0;
+  char ch = '/';
+  size_t last_idx;
+  string dir;
+
+  last_idx = s.find_last_of(ch);
+  if (last_idx == string::npos)
+  {
+    ROS_ERROR_STREAM("Invalid pcd directory!");
+  }
+  else
+  {
+    dir = s.substr(start_idx, last_idx-start_idx);
+  }
+  
+  return dir;
+}
 
 int main(int argc, char **argv) {
   ros::init(argc, argv, "lidarCamCalib");
@@ -21,6 +44,7 @@ int main(int argc, char **argv) {
   nh.param<string>("bag_file", bag_file, "");
   nh.param<string>("pcd_file", pcd_file, "");
   nh.param<string>("lidar_topic", lidar_topic, "/livox/lidar");
+  pcd_dir = get_pcd_dir(pcd_file);
   nh.param<bool>("is_custom_msg", is_custom_msg, false);
   pcl::PointCloud<pcl::PointXYZI> output_cloud;
   std::fstream file_;
@@ -68,8 +92,10 @@ int main(int argc, char **argv) {
   output_cloud.is_dense = false;
   output_cloud.width = output_cloud.points.size();
   output_cloud.height = 1;
+  std::filesystem::create_directories(pcd_dir);
   pcl::io::savePCDFileASCII(pcd_file, output_cloud);
   string msg = "Sucessfully save point cloud to pcd file: " + pcd_file;
   ROS_INFO_STREAM(msg.c_str());
+  ros::shutdown();
   return 0;
 }
