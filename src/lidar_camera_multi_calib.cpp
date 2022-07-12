@@ -267,27 +267,36 @@ int main(int argc, char **argv) {
   // Maximum match distance threshold: 15 pixels
   // If initial extrinsic lead to error over 15 pixels, the algorithm will not
   // work
-  int dis_threshold = 20;
+  int dis_threshold = 30;
   bool opt_flag = true;
 
   // Iteratively reducve the matching distance threshold
-  for (dis_threshold = 20; dis_threshold > 8; dis_threshold -= 1) {
+  for (dis_threshold = 30; dis_threshold > 10; dis_threshold -= 1) {
     // For each distance, do twice optimization
     for (int cnt = 0; cnt < 2; cnt++) {
-      std::cout << "Iteration:" << iter++ << " Dis:" << dis_threshold
-                << std::endl;
+
       std::vector<std::vector<VPnPData>> vpnp_list_vect;
+      int vpnp_size = 0;
       for (size_t i = 0; i < data_num; i++) {
         std::vector<VPnPData> vpnp_list;
         calibs[i].buildVPnp(calib_params, dis_threshold, true,
                             calibs[i].rgb_egde_cloud_,
                             calibs[i].plane_line_cloud_, vpnp_list);
         vpnp_list_vect.push_back(vpnp_list);
+        vpnp_size += vpnp_list.size();
       }
+      std::cout << "Iteration:" << iter++ << " Dis:" << dis_threshold
+                << " pnp size: " << vpnp_size << std::endl;
       cv::Mat projection_img = calibs[0].getProjectionImg(calib_params);
       cv::imshow("Optimization", projection_img);
       cv::waitKey(100);
-      Eigen::Quaterniond q(R);
+      Eigen::Vector3d euler_angle(calib_params[0], calib_params[1],
+                                  calib_params[2]);
+      Eigen::Matrix3d opt_init_R;
+      opt_init_R = Eigen::AngleAxisd(euler_angle[0], Eigen::Vector3d::UnitZ()) *
+                   Eigen::AngleAxisd(euler_angle[1], Eigen::Vector3d::UnitY()) *
+                   Eigen::AngleAxisd(euler_angle[2], Eigen::Vector3d::UnitX());
+      Eigen::Quaterniond q(opt_init_R);
       Eigen::Vector3d ori_t = T;
       double ext[7];
       ext[0] = q.x();
@@ -324,7 +333,7 @@ int main(int argc, char **argv) {
       ceres::Solve(options, &problem, &summary);
       std::cout << summary.BriefReport() << std::endl;
       Eigen::Matrix3d rot = m_q.toRotationMatrix();
-      Eigen::Vector3d euler_angle = rot.eulerAngles(2, 1, 0);
+      euler_angle = rot.eulerAngles(2, 1, 0);
       // std::cout << rot << std::endl;
       // std::cout << m_t << std::endl;
       calib_params[0] = euler_angle[0];
@@ -340,7 +349,7 @@ int main(int argc, char **argv) {
       Eigen::Quaterniond opt_q(R);
       std::cout << "q_dis:" << RAD2DEG(opt_q.angularDistance(q))
                 << " ,t_dis:" << (T - ori_t).norm() << std::endl;
-      // getchar();
+      getchar();
       // if (opt_q.angularDistance(q) < DEG2RAD(0.01) &&
       //     (T - ori_t).norm() < 0.005) {
       //   opt_flag = false;
@@ -374,6 +383,7 @@ int main(int argc, char **argv) {
   Eigen::Matrix3d adjust_rotation;
   adjust_rotation = init_rotation.inverse() * R;
   Eigen::Vector3d adjust_euler = adjust_rotation.eulerAngles(2, 1, 0);
+
   // outfile << RAD2DEG(adjust_euler[0]) << "," << RAD2DEG(adjust_euler[1]) <<
   // ","
   //         << RAD2DEG(adjust_euler[2]) << "," << 0 << "," << 0 << "," << 0

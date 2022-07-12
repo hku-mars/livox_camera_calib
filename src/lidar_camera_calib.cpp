@@ -267,15 +267,13 @@ int main(int argc, char **argv) {
   // Maximum match distance threshold: 15 pixels
   // If initial extrinsic lead to error over 15 pixels, the algorithm will not
   // work
-  int dis_threshold = 20;
+  int dis_threshold = 30;
   bool opt_flag = true;
 
   // Iteratively reducve the matching distance threshold
-  for (dis_threshold = 20; dis_threshold > 8; dis_threshold -= 1) {
+  for (dis_threshold = 30; dis_threshold > 10; dis_threshold -= 1) {
     // For each distance, do twice optimization
     for (int cnt = 0; cnt < 2; cnt++) {
-      std::cout << "Iteration:" << iter++ << " Dis:" << dis_threshold
-                << std::endl;
       if (use_vpnp) {
         calibra.buildVPnp(calib_params, dis_threshold, true,
                           calibra.rgb_egde_cloud_, calibra.plane_line_cloud_,
@@ -285,6 +283,9 @@ int main(int argc, char **argv) {
                          calibra.rgb_egde_cloud_, calibra.plane_line_cloud_,
                          pnp_list);
       }
+      std::cout << "Iteration:" << iter++ << " Dis:" << dis_threshold
+                << " pnp size:" << vpnp_list.size() << std::endl;
+
       cv::Mat projection_img = calibra.getProjectionImg(calib_params);
       cv::imshow("Optimization", projection_img);
       cv::waitKey(100);

@@ -947,7 +947,7 @@ void Calibration::calcLine(
                   plane_list[plane_index1].cloud.makeShared());
               kdtree2->setInputCloud(
                   plane_list[plane_index2].cloud.makeShared());
-              for (float inc = 0; inc <= length; inc += 0.01) {
+              for (float inc = 0; inc <= length; inc += 0.005) {
                 pcl::PointXYZI p;
                 p.x = p1.x + (p2.x - p1.x) * inc / length;
                 p.y = p1.y + (p2.y - p1.y) * inc / length;
