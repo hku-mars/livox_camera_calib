@@ -349,7 +349,7 @@ int main(int argc, char **argv) {
       Eigen::Quaterniond opt_q(R);
       std::cout << "q_dis:" << RAD2DEG(opt_q.angularDistance(q))
                 << " ,t_dis:" << (T - ori_t).norm() << std::endl;
-      getchar();
+      // getchar();
       // if (opt_q.angularDistance(q) < DEG2RAD(0.01) &&
       //     (T - ori_t).norm() < 0.005) {
       //   opt_flag = false;
