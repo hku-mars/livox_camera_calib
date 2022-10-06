@@ -213,6 +213,7 @@ int main(int argc, char **argv) {
   for (size_t i = 0; i < data_num; i++) {
     string image_file, pcd_file = "";
     image_file = image_path + std::to_string(i) + image_ext;
+    std::cout<<"\t"<<i<<"/"<<data_num<<" "<<image_file<<"\n";
     pcd_file = pcd_path + std::to_string(i) + ".pcd";
     Calibration single_calib(image_file, pcd_file, calib_config_file);
     single_calib.fx_ = camera_matrix[0];
