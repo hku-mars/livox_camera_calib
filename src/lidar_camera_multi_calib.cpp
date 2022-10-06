@@ -13,6 +13,7 @@ string image_path;
 string image_ext;
 string pcd_path;
 string result_file;
+string result_dir;
 int data_num;
 
 // Camera config
@@ -200,6 +201,7 @@ int main(int argc, char **argv) {
   nh.param<string>("common/image_ext", image_ext, "");
   nh.param<string>("common/pcd_path", pcd_path, "");
   nh.param<string>("common/result_file", result_file, "");
+  nh.param<string>("common/result_dir", result_dir, "");
   nh.param<int>("common/data_num", data_num, 1);
   nh.param<vector<double>>("camera/camera_matrix", camera_matrix,
                            vector<double>());
@@ -256,15 +258,21 @@ int main(int argc, char **argv) {
   calib_params[3] = T[0];
   calib_params[4] = T[1];
   calib_params[5] = T[2];
-  cv::Mat init_img = calibs[0].getProjectionImg(calib_params);
-  cv::imshow("Initial extrinsic", init_img);
-  cv::waitKey(1000);
+  for (size_t i = 0; i < data_num; i++) {
+    cv::Mat init_img = calibs[i].getProjectionImg(calib_params);
+    cv::imshow("Initial extrinsic "+std::to_string(i), init_img);
+    cv::imwrite(result_dir+std::to_string(i)+"_init.png", init_img);
+    cv::waitKey(1000);
+for (size_t i = 0; i < data_num; i++) {
   if (use_rough_calib) {
     roughCalib(calibs, calib_params, DEG2RAD(0.2), 40);
   }
-  cv::Mat test_img = calibs[0].getProjectionImg(calib_params);
-  cv::imshow("After rough extrinsic", test_img);
-  cv::waitKey(1000);
+  for (size_t i = 0; i < data_num; i++) {
+    cv::Mat test_img = calibs[i].getProjectionImg(calib_params);
+    cv::imshow("After rough extrinsic "+std::to_string(i), test_img);
+    cv::imwrite(result_dir+std::to_string(i)+"_rough.png", init_img);
+    cv::waitKey(1000);
+  }
   int iter = 0;
   // Maximum match distance threshold: 15 pixels
   // If initial extrinsic lead to error over 15 pixels, the algorithm will not
@@ -377,9 +385,12 @@ int main(int argc, char **argv) {
             << std::endl;
   }
   outfile << 0 << "," << 0 << "," << 0 << "," << 1 << std::endl;
-  cv::Mat opt_img = calibs[0].getProjectionImg(calib_params);
-  cv::imshow("Optimization result", opt_img);
-  cv::waitKey(1000);
+  for (size_t i = 0; i < data_num; i++) {
+    cv::Mat opt_img = calibs[i].getProjectionImg(calib_params);
+    cv::imshow("Optimization result "+std::to_string(i), opt_img);
+    cv::imwrite(result_dir+std::to_string(i)+"_opt.png", opt_img);
+    cv::waitKey(1000);
+  }
   Eigen::Matrix3d init_rotation;
   init_rotation << 0, -1.0, 0, 0, 0, -1.0, 1, 0, 0;
   Eigen::Matrix3d adjust_rotation;
