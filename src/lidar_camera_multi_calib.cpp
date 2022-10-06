@@ -210,8 +210,8 @@ int main(int argc, char **argv) {
   std::vector<Calibration> calibs;
   for (size_t i = 0; i < data_num; i++) {
     string image_file, pcd_file = "";
-    pcd_file = pcd_path + "/" + std::to_string(i) + ".pcd";
     image_file = image_path + std::to_string(i) + image_ext;
+    pcd_file = pcd_path + std::to_string(i) + ".pcd";
     Calibration single_calib(image_file, pcd_file, calib_config_file);
     single_calib.fx_ = camera_matrix[0];
     single_calib.cx_ = camera_matrix[2];
