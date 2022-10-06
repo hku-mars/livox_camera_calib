@@ -12,7 +12,7 @@ using namespace std;
 string image_path;
 string image_ext;
 string pcd_path;
-string result_path;
+string result_file;
 int data_num;
 
 // Camera config
@@ -199,7 +199,7 @@ int main(int argc, char **argv) {
   nh.param<string>("common/image_path", image_path, "");
   nh.param<string>("common/image_ext", image_ext, "");
   nh.param<string>("common/pcd_path", pcd_path, "");
-  nh.param<string>("common/result_path", result_path, "");
+  nh.param<string>("common/result_file", result_file, "");
   nh.param<int>("common/data_num", data_num, 1);
   nh.param<vector<double>>("camera/camera_matrix", camera_matrix,
                            vector<double>());
@@ -371,7 +371,7 @@ int main(int argc, char **argv) {
   R = Eigen::AngleAxisd(calib_params[0], Eigen::Vector3d::UnitZ()) *
       Eigen::AngleAxisd(calib_params[1], Eigen::Vector3d::UnitY()) *
       Eigen::AngleAxisd(calib_params[2], Eigen::Vector3d::UnitX());
-  std::ofstream outfile(result_path);
+  std::ofstream outfile(result_file);
   for (int i = 0; i < 3; i++) {
     outfile << R(i, 0) << "," << R(i, 1) << "," << R(i, 2) << "," << T[i]
             << std::endl;
