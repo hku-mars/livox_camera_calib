@@ -202,6 +202,8 @@ int main(int argc, char **argv) {
   nh.param<string>("common/pcd_path", pcd_path, "");
   nh.param<string>("common/result_file", result_file, "");
   nh.param<string>("common/result_dir", result_dir, "");
+  boost::filesystem::create_directories(result_dir);
+  result_file = result_dir + result_file;
   nh.param<int>("common/data_num", data_num, 1);
   nh.param<vector<double>>("camera/camera_matrix", camera_matrix,
                            vector<double>());

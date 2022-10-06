@@ -5,6 +5,7 @@ common:
     pcd_path:  "/home/ycj/data/calib/pcd/old/"
     result_dir: "/home/ycj/data/calib/"
     result_file:  "/home/ycj/data/calib/extrinsic.txt"
+    result_file:  "extrinsic.txt" # saved in the result_dir specified above
     data_num: 3
 # Camera Parameters. Adjust them!
 camera:
