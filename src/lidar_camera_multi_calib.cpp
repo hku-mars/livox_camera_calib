@@ -264,14 +264,14 @@ int main(int argc, char **argv) {
     cv::imshow("Initial extrinsic "+std::to_string(i), init_img);
     cv::imwrite(result_dir+std::to_string(i)+"_init.png", init_img);
     cv::waitKey(1000);
-for (size_t i = 0; i < data_num; i++) {
+  }
   if (use_rough_calib) {
     roughCalib(calibs, calib_params, DEG2RAD(0.2), 40);
   }
   for (size_t i = 0; i < data_num; i++) {
     cv::Mat test_img = calibs[i].getProjectionImg(calib_params);
     cv::imshow("After rough extrinsic "+std::to_string(i), test_img);
-    cv::imwrite(result_dir+std::to_string(i)+"_rough.png", init_img);
+    cv::imwrite(result_dir+std::to_string(i)+"_rough.png", test_img);
     cv::waitKey(1000);
   }
   int iter = 0;
