@@ -15,6 +15,7 @@ string pcd_path;
 string result_file;
 string result_dir;
 int data_num;
+int numdigits;
 
 // Camera config
 vector<double> camera_matrix;
@@ -192,6 +193,14 @@ void roughCalib(std::vector<Calibration> &calibs, Vector6d &calib_params,
     }
 }
 
+std::string zeropad(int number, int digitnum){
+  std::string old_str = std::to_string(number);
+  size_t n = size_t(digitnum);
+  int precision = n - std::min(n, old_str.size());
+  std::string new_str = std::string(precision, '0').append(old_str);
+  return new_str;
+}
+
 int main(int argc, char **argv) {
   ros::init(argc, argv, "lidarCamCalib");
   ros::NodeHandle nh;
@@ -204,7 +213,9 @@ int main(int argc, char **argv) {
   nh.param<string>("common/result_dir", result_dir, "");
   boost::filesystem::create_directories(result_dir);
   result_file = result_dir + result_file;
+
   nh.param<int>("common/data_num", data_num, 1);
+  nh.param<int>("common/numdigits", numdigits, 1);
   nh.param<vector<double>>("camera/camera_matrix", camera_matrix,
                            vector<double>());
   nh.param<vector<double>>("camera/dist_coeffs", dist_coeffs, vector<double>());
@@ -214,9 +225,9 @@ int main(int argc, char **argv) {
   std::vector<Calibration> calibs;
   for (size_t i = 0; i < data_num; i++) {
     string image_file, pcd_file = "";
-    image_file = image_path + std::to_string(i) + image_ext;
+    image_file = image_path + zeropad(i,numdigits) + image_ext;
     std::cout<<"\t"<<i<<"/"<<data_num<<" "<<image_file<<"\n";
-    pcd_file = pcd_path + std::to_string(i) + ".pcd";
+    pcd_file = pcd_path + zeropad(i,numdigits) + ".pcd";
     Calibration single_calib(image_file, pcd_file, calib_config_file);
     single_calib.fx_ = camera_matrix[0];
     single_calib.cx_ = camera_matrix[2];
@@ -263,8 +274,8 @@ int main(int argc, char **argv) {
   calib_params[5] = T[2];
   for (size_t i = 0; i < data_num; i++) {
     cv::Mat init_img = calibs[i].getProjectionImg(calib_params);
-    cv::imshow("Initial extrinsic "+std::to_string(i), init_img);
-    cv::imwrite(result_dir+std::to_string(i)+"_init.png", init_img);
+    cv::imshow("Initial extrinsic "+zeropad(i,numdigits), init_img);
+    cv::imwrite(result_dir+zeropad(i,numdigits)+"_init.png", init_img);
     cv::waitKey(1000);
   }
   if (use_rough_calib) {
@@ -272,8 +283,8 @@ int main(int argc, char **argv) {
   }
   for (size_t i = 0; i < data_num; i++) {
     cv::Mat test_img = calibs[i].getProjectionImg(calib_params);
-    cv::imshow("After rough extrinsic "+std::to_string(i), test_img);
-    cv::imwrite(result_dir+std::to_string(i)+"_rough.png", test_img);
+    cv::imshow("After rough extrinsic "+zeropad(i,numdigits), test_img);
+    cv::imwrite(result_dir+zeropad(i,numdigits)+"_rough.png", test_img);
     cv::waitKey(1000);
   }
   int iter = 0;
@@ -390,8 +401,8 @@ int main(int argc, char **argv) {
   outfile << 0 << "," << 0 << "," << 0 << "," << 1 << std::endl;
   for (size_t i = 0; i < data_num; i++) {
     cv::Mat opt_img = calibs[i].getProjectionImg(calib_params);
-    cv::imshow("Optimization result "+std::to_string(i), opt_img);
-    cv::imwrite(result_dir+std::to_string(i)+"_opt.png", opt_img);
+    cv::imshow("Optimization result "+zeropad(i,numdigits), opt_img);
+    cv::imwrite(result_dir+zeropad(i,numdigits)+"_opt.png", opt_img);
     cv::waitKey(1000);
   }
   Eigen::Matrix3d init_rotation;
