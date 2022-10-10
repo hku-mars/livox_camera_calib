@@ -199,6 +199,8 @@ int main(int argc, char **argv) {
   nh.param<string>("common/result_file", result_file, "");
   nh.param<string>("common/result_dir", result_dir, "");
   result_file = result_dir + result_file;
+  string ImgOutName =result_file;
+  ImgOutName.resize(ImgOutName.size()-4);
   
   nh.param<vector<double>>("camera/camera_matrix", camera_matrix,
                            vector<double>());
@@ -255,9 +257,10 @@ int main(int argc, char **argv) {
   pcl::toROSMsg(*rgb_cloud, pub_cloud);
   pub_cloud.header.frame_id = "livox";
   calibra.init_rgb_cloud_pub_.publish(pub_cloud);
+  
   cv::Mat init_img = calibra.getProjectionImg(calib_params);
   cv::imshow("Initial extrinsic", init_img);
-  cv::imwrite(result_dir+"init.png", init_img);
+  cv::imwrite(ImgOutName+"_init.png", init_img);
   cv::waitKey(1000);
 
   if (use_rough_calib) {
@@ -384,7 +387,7 @@ int main(int argc, char **argv) {
   outfile << 0 << "," << 0 << "," << 0 << "," << 1 << std::endl;
   cv::Mat opt_img = calibra.getProjectionImg(calib_params);
   cv::imshow("Optimization result", opt_img);
-  cv::imwrite(result_dir+"opt.png", opt_img);
+  cv::imwrite(ImgOutName+"_opt.png", opt_img);
   cv::waitKey(1000);
   Eigen::Matrix3d init_rotation;
   init_rotation << 0, -1.0, 0, 0, 0, -1.0, 1, 0, 0;
