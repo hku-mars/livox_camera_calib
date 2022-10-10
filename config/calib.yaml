@@ -2,7 +2,7 @@
 common:
     image_file: "/home/ycj/data/calib/image/0.png"
     pcd_file: "/home/ycj/data/calib/pcd/0.pcd"
-    result_file: "/home/ycj/data/calib/extrinsic.txt"
+    result_file: "extrinsic.txt"
     result_dir: "/home/ycj/data/calib/"
 
 # Camera Parameters. Adjust them!

@@ -198,7 +198,8 @@ int main(int argc, char **argv) {
   nh.param<string>("common/pcd_file", pcd_file, "");
   nh.param<string>("common/result_file", result_file, "");
   nh.param<string>("common/result_dir", result_dir, "");
-  std::cout << "pcd_file path:" << pcd_file << std::endl;
+  result_file = result_dir + result_file;
+  
   nh.param<vector<double>>("camera/camera_matrix", camera_matrix,
                            vector<double>());
   nh.param<vector<double>>("camera/dist_coeffs", dist_coeffs, vector<double>());
