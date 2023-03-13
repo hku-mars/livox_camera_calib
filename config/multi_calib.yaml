@@ -1,8 +1,11 @@
 # Data path. adjust them!
 common:
-    image_path:  "/home/ycj/data/calib/image/old"
-    pcd_path:  "/home/ycj/data/calib/pcd/old"
-    result_path:  "/home/ycj/data/calib/extrinsic.txt"
+    image_path:  "/home/ycj/data/calib/image/old/"
+    image_ext: ".bmp"
+    pcd_path:  "/home/ycj/data/calib/pcd/old/"
+    result_dir: "/home/ycj/data/calib/"
+    result_file:  "extrinsic.txt" # saved in the result_dir specified above
+    numdigits: 1 # number of digits, from now the dataset indexes are zero padded
     data_num: 3
 # Camera Parameters. Adjust them!
 camera:
